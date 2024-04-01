@@ -31,11 +31,12 @@ class SensorModel:
 
         ####################################
         # Adjust these parameters
-        self.alpha_hit = 0
-        self.alpha_short = 0
-        self.alpha_max = 0
-        self.alpha_rand = 0
-        self.sigma_hit = 0
+        self.alpha_hit = 0.74
+        self.alpha_short = 0.07
+        self.alpha_max = 0.07
+        self.alpha_rand = 0.12
+        self.sigma_hit = 0.5
+        self.normalization_constant = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -48,6 +49,7 @@ class SensorModel:
 
         # Precompute the sensor model table
         self.sensor_model_table = np.empty((self.table_width, self.table_width))
+        self.p_hit_table = np.empty((self.table_width, self.table_width))
         self.precompute_sensor_model()
 
         # Create a simulated laser scan
@@ -86,8 +88,32 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
+        
+        for z_i in range(self.table_width): # z_i is the rows
+            for d_i in range(self.table_width): # d is the columns
+                self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
+        self.p_hit_table = np.normalize(self.p_hit_table, axis=1, norm='max') # normalize the columns of the hit table
 
-        raise NotImplementedError
+        for z_i in range(self.table_width):
+            for d_i in range(self.table_width):
+                self.sensor_model_table[z_i][d_i] = self.add_probablities(z_i, d_i, self.p_hit_table[z_i][d_i])
+
+        self.sensor_model_table = np.normalize(self.sensor_model_table, axis=1, norm='max') # normalize the columns
+
+    def add_probablities(self, z, d, p_hit_val):
+        return self.alpha_hit*p_hit_val+self.alpha_short*self.p_short(z, d)+self.alpha_max*self.p_max(z)+self.alpha_rand*self.p_rand(z)
+
+    def p_hit(self, z, d):
+        return self.n*1/np.sqrt(2*np.pi*self.sigma_hit**2)*np.exp(-(z-d)**2/(2*self.sigma_hit**2)) if 0 <= z <= self.z_max else 0
+
+    def p_short(self, z, d):
+        return 2/d*(1-z/d) if (0<=z<=d and d!=0) else 0
+
+    def p_max(self, z):
+        return 1/self.epsilon if self.z_max-self.epsilon <= z <= self.z_max else 0
+
+    def p_rand(self, z):
+        return 1/self.z_max if 0 <= z <= self.z_max else 0
 
     def evaluate(self, particles, observation):
         """
@@ -122,6 +148,9 @@ class SensorModel:
         # This produces a matrix of size N x num_beams_per_particle 
 
         scans = self.scan_sim.scan(particles)
+        observation
+
+        probabilities = []
 
         ####################################
 
