@@ -34,6 +34,15 @@ class MotionModel:
         ####################################
         # TODO
 
-        raise NotImplementedError
+        dx, dy, dtheta = odometry
+        R = np.array([[np.cos(-dtheta), -np.sin(-dtheta)],
+        [np.sin(-dtheta), -np.cos(-dtheta)]])
+        
+        updated_particles = []
+        for particle in particles: 
+            new_particle = np.random.Generator.normal(loc=0.0, scale = 1.0, size=(3, )) + particle + np.append(np.dot(R, odometry[:2]), dtheta)
+            updated_particles.append(new_particle)  
+        
+        return updated_particles
 
         ####################################
