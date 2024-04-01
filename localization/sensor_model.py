@@ -10,7 +10,7 @@ from nav_msgs.msg import OccupancyGrid
 import sys
 
 np.set_printoptions(threshold=sys.maxsize)
-
+import math
 
 class SensorModel:
 
@@ -87,7 +87,38 @@ class SensorModel:
             No return type. Directly modify `self.sensor_model_table`.
         """
 
-        raise NotImplementedError
+        e = math.e
+        pi = math.pi
+        table = []
+        
+        phit_array = np.empty((self.table_width, self.table_width))
+        pshort_array = np.empty((self.table_width, self.table_width))
+        pmax_array = np.empty((self.table_width, self.table_width))
+        prand_array = np.empty((self.table_width, self.table_width))
+        zmax =200
+
+        for zk_i in range(self.table_width):
+            for d in range(self.table_width):
+                phit = (1/math.sqrt(2*pi*self.sigma_hit**2))*e**(-((zk_i - d)**2)/(2*self.sigma_hit**2)) if zk_i <= zmax else 0 
+                pshort = (2/d)*(1 - zk_i/d) if zk_i<=d else 0 
+                pmax = 1/epsilon if zk_i <= zmax and zmax - epsilon <= zk_i else 0 
+                prand = 1/zmax if zk_i <= zmax else 0 
+
+                phit_array[zk_i][d] = phit 
+                pshort_array[zk_i][d] = pshort
+                pmax_array[zk_i][d] = pmax
+                prand_array[zk_i][d] = prand
+
+        for zk_i in range(self.table_width):
+            for d in range(self.table_width):
+                p_zki = self.alpha_hit*phit + self.alpha_short*pshort + self.alpha_max*pmax + self.alpha_rand*prand
+                table[zk_i][d] = p_zki
+
+        for col in range(self.table_width):
+            table[:,col] = np.normalize(table[:,col])
+
+        self.sensor_model_table = table
+        
 
     def evaluate(self, particles, observation):
         """
