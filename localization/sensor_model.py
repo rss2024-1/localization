@@ -220,8 +220,8 @@ class SensorModel:
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
                 self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
-        self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=0) # normalize the columns of the hit table
-        self.p_hit_table /= sum(self.p_hit_table)
+        # self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=0) # normalize the columns of the hit table
+        self.p_hit_table /= sum(self.p_hit_table, axis=0)
 
         for z_i in range(self.table_width):
             for d_i in range(self.table_width):
