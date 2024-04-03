@@ -220,14 +220,15 @@ class SensorModel:
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
                 self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
-        self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=1) # normalize the columns of the hit table
+        self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=0) # normalize the columns of the hit table
+        self.p_hit_table /= sum(self.p_hit_table)
 
         for z_i in range(self.table_width):
             for d_i in range(self.table_width):
                 self.sensor_model_table[z_i][d_i] = self.add_probablities(z_i, d_i, self.p_hit_table[z_i][d_i])
 
-        self.sensor_model_table /= np.linalg.norm(self.sensor_model_table, axis=1) # normalize the columns
-
+        self.sensor_model_table /= np.linalg.norm(self.sensor_model_table, axis=0) # normalize the columns
+        self.sensor_model_table /= sum(self.sensor_model_table)
 
 
     def add_probablities(self, z, d, p_hit_val):
