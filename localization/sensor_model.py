@@ -154,6 +154,33 @@ class SensorModel:
 
         scans = self.scan_sim.scan(particles)
 
+        scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
+        
+        try:
+            self.num_beams_per_particle == np.shape(scans)[1]
+        except AssertionError:
+            print("num beams per particle doesn't match after the ray casting")
+
+        # convert from meters to pixels
+        scans = scans*self.resolution*self.lidar_scale_to_map_scale
+        observation = observation*self.resolution*self.lidar_scale_to_map_scale
+        
+        probabilities = np.ones(len(particles))
+        for i, particle in enumerate(particles):
+            for j in range(self.num_beams_per_particle):
+                # get index of map @ ray to lookup probability at location
+                x = int(particle[0] + scans[i, j] * np.cos(particle[2] + j * self.scan_theta_discretization))
+                y = int(particle[1] + scans[i, j] * np.sin(particle[2] + j * self.scan_theta_discretization))
+
+                # check in map bounds
+                if x < 0 or y < 0 or x >= self.map.shape[0] or y >= self.map.shape[1]:
+                    continue
+
+                probabilities[i] *= self.sensor_model_table[int(observation[j]), self.map[y, x]]
+        # do we need to normalize?
+        # probabilities /= np.sum(probabilities)
+        return probabilities
+
         ####################################
 
     def map_callback(self, map_msg):
