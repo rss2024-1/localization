@@ -86,8 +86,8 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-
-        raise NotImplementedError
+        pass
+        # raise NotImplementedError
 
     def evaluate(self, particles, observation):
         """
