@@ -36,6 +36,7 @@ class SensorModel:
         self.alpha_max = 0
         self.alpha_rand = 0
         self.sigma_hit = 0
+        self.epsilon = 0
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -101,7 +102,7 @@ class SensorModel:
             for d in range(self.table_width):
                 phit = (1/math.sqrt(2*pi*self.sigma_hit**2))*e**(-((zk_i - d)**2)/(2*self.sigma_hit**2)) if zk_i <= zmax else 0 
                 pshort = (2/d)*(1 - zk_i/d) if zk_i<=d else 0 
-                pmax = 1/epsilon if zk_i <= zmax and zmax - epsilon <= zk_i else 0 
+                pmax = 1/self.epsilon if zk_i <= zmax and zmax - self.epsilon <= zk_i else 0 
                 prand = 1/zmax if zk_i <= zmax else 0 
 
                 phit_array[zk_i][d] = phit 
@@ -152,8 +153,6 @@ class SensorModel:
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
 
-        scans = self.scan_sim.scan(particles)
-
         scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
         
         try:
@@ -177,6 +176,7 @@ class SensorModel:
                     continue
 
                 probabilities[i] *= self.sensor_model_table[int(observation[j]), self.map[y, x]]
+        
         # do we need to normalize?
         # probabilities /= np.sum(probabilities)
         return probabilities

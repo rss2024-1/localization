@@ -1,4 +1,4 @@
-
+import numpy as np
 
 class MotionModel:
 
@@ -35,8 +35,9 @@ class MotionModel:
         # TODO
 
         dx, dy, dtheta = odometry
+        # wondering why -dtheta?
         R = np.array([[np.cos(-dtheta), -np.sin(-dtheta)],
-        [np.sin(-dtheta), -np.cos(-dtheta)]])
+                    [np.sin(-dtheta), -np.cos(-dtheta)]])
         
         updated_particles = []
         for particle in particles: 

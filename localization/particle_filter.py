@@ -75,6 +75,19 @@ class ParticleFilter(Node):
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
 
+        ## notes from textbook https://docs.ufpr.br/~danielsantos/ProbabilisticRobotics.pdf
+        def alg (X_t-1, ut, zt, m):
+            X_t = []
+            for m in M:
+                xm_t = sample_motion_model(ut, xm_t-1)
+                wm_t = measurement_model(z_t, xm_t, m)
+                X_t.append((x))
+        ## basic mcl algo represents the belief bel(x_t) by a set of M particles X_t = {x_t1, x_t2..., x_tm}
+        ## sample from the motion model using particles from present belief as starting points
+        ## find importance weight of that particle, w
+        ## get initial belief by randomly generating M from prior dist
+        ## assign uniform importance factor to each particle. M^-1
+
 
 def main(args=None):
     rclpy.init(args=args)
