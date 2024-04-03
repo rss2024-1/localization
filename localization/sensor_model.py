@@ -162,6 +162,7 @@ class SensorModel:
         self.sigma_hit = 0.5
         self.z_max = 1
         self.n = 1
+        self.epsilon = 1
         self.normalization_constant = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
@@ -218,13 +219,13 @@ class SensorModel:
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
                 self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
-        self.p_hit_table = np.linalg.norm(self.p_hit_table, axis=1, norm='max') # normalize the columns of the hit table
+        self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=1, norm='max') # normalize the columns of the hit table
 
         for z_i in range(self.table_width):
             for d_i in range(self.table_width):
                 self.sensor_model_table[z_i][d_i] = self.add_probablities(z_i, d_i, self.p_hit_table[z_i][d_i])
 
-        self.sensor_model_table = np.linalg.norm(self.sensor_model_table, axis=1, norm='max') # normalize the columns
+        self.sensor_model_table /= np.linalg.norm(self.sensor_model_table, axis=1, norm='max') # normalize the columns
 
     def add_probablities(self, z, d, p_hit_val):
         return self.alpha_hit*p_hit_val+self.alpha_short*self.p_short(z, d)+self.alpha_max*self.p_max(z)+self.alpha_rand*self.p_rand(z)
