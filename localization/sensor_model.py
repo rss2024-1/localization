@@ -19,6 +19,7 @@ class SensorModel:
         node.declare_parameter('scan_theta_discretization', "default")
         node.declare_parameter('scan_field_of_view', "default")
         node.declare_parameter('lidar_scale_to_map_scale', 1)
+        node.declare_parameter('sensor_epsilon', 0.1)
 
         self.map_topic = node.get_parameter('map_topic').get_parameter_value().string_value
         self.num_beams_per_particle = node.get_parameter('num_beams_per_particle').get_parameter_value().integer_value
@@ -27,14 +28,15 @@ class SensorModel:
         self.scan_field_of_view = node.get_parameter('scan_field_of_view').get_parameter_value().double_value
         self.lidar_scale_to_map_scale = node.get_parameter(
             'lidar_scale_to_map_scale').get_parameter_value().double_value
+        self.epsilon = node.get_parameter('sensor_epsilon')
 
         ####################################
         # Adjust these parameters
-        self.alpha_hit = 0
-        self.alpha_short = 0
-        self.alpha_max = 0
-        self.alpha_rand = 0
-        self.sigma_hit = 0
+        self.alpha_hit = 0.74
+        self.alpha_short = 0.07
+        self.alpha_max = 0.07
+        self.alpha_rand = 0.12
+        self.sigma_hit = 8.0
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -100,7 +102,7 @@ class SensorModel:
             for d in range(self.table_width):
                 phit = (1/np.sqrt(2*pi*self.sigma_hit**2))*e**(-((zk_i - d)**2)/(2*self.sigma_hit**2)) if zk_i <= zmax else 0 
                 pshort = (2/d)*(1 - zk_i/d) if zk_i<=d else 0 
-                pmax = 1/epsilon if zk_i <= zmax and zmax - epsilon <= zk_i else 0 
+                pmax = 1/self.epsilon if zk_i <= zmax and zmax - self.epsilon <= zk_i else 0 
                 prand = 1/zmax if zk_i <= zmax else 0 
 
                 phit_array[zk_i][d] = phit 
