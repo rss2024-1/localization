@@ -134,7 +134,6 @@ import sys
 
 np.set_printoptions(threshold=sys.maxsize)
 
-
 class SensorModel:
 
     def __init__(self, node):
@@ -143,6 +142,7 @@ class SensorModel:
         node.declare_parameter('scan_theta_discretization', "default")
         node.declare_parameter('scan_field_of_view', "default")
         node.declare_parameter('lidar_scale_to_map_scale', 1)
+        node.declare_parameter('sensor_epsilon', 0.1)
 
         self.map_topic = node.get_parameter('map_topic').get_parameter_value().string_value
         self.num_beams_per_particle = node.get_parameter('num_beams_per_particle').get_parameter_value().integer_value
@@ -151,6 +151,7 @@ class SensorModel:
         self.scan_field_of_view = node.get_parameter('scan_field_of_view').get_parameter_value().double_value
         self.lidar_scale_to_map_scale = node.get_parameter(
             'lidar_scale_to_map_scale').get_parameter_value().double_value
+        self.epsilon = node.get_parameter('sensor_epsilon')
 
         ####################################
         # Adjust these parameters
