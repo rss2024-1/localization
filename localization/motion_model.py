@@ -33,17 +33,21 @@ class MotionModel:
 
         ####################################
         # TODO
-
         dx, dy, dtheta = odometry
-        # wondering why -dtheta?
-        R = np.array([[np.cos(-dtheta), -np.sin(-dtheta)],
-                    [np.sin(-dtheta), -np.cos(-dtheta)]])
         
-        updated_particles = []
-        for particle in particles: 
-            new_particle = np.random.Generator.normal(loc=0.0, scale = 1.0, size=(3, )) + particle + np.append(np.dot(R, odometry[:2]), dtheta)
-            updated_particles.append(new_particle)  
-        
-        return updated_particles
+        cos_thetas = np.cos(particles[:, 2])
+        sin_thetas = np.sin(particles[:, 2])
+
+        dx_rotated = cos_thetas * dx - sin_thetas * dy
+        dy_rotated = sin_thetas * dx + cos_thetas * dy
+
+        particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = .001, size=(len(particles),))
+        particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = .001, size=(len(particles),))
+        particles[:, 2] += dtheta
+
+        # Normalize angles to the range [-pi, pi]
+        particles[:, 2] = (particles[:, 2] + np.pi) % (2 * np.pi) - np.pi        
+
+        return particles
 
         ####################################
