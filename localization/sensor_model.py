@@ -10,7 +10,6 @@ from nav_msgs.msg import OccupancyGrid
 import sys
 
 np.set_printoptions(threshold=sys.maxsize)
-import math
 
 class SensorModel:
 
@@ -87,8 +86,8 @@ class SensorModel:
             No return type. Directly modify `self.sensor_model_table`.
         """
 
-        e = math.e
-        pi = math.pi
+        e = np.e
+        pi = np.pi
         table = []
         
         phit_array = np.empty((self.table_width, self.table_width))
@@ -99,7 +98,7 @@ class SensorModel:
 
         for zk_i in range(self.table_width):
             for d in range(self.table_width):
-                phit = (1/math.sqrt(2*pi*self.sigma_hit**2))*e**(-((zk_i - d)**2)/(2*self.sigma_hit**2)) if zk_i <= zmax else 0 
+                phit = (1/np.sqrt(2*pi*self.sigma_hit**2))*e**(-((zk_i - d)**2)/(2*self.sigma_hit**2)) if zk_i <= zmax else 0 
                 pshort = (2/d)*(1 - zk_i/d) if zk_i<=d else 0 
                 pmax = 1/epsilon if zk_i <= zmax and zmax - epsilon <= zk_i else 0 
                 prand = 1/zmax if zk_i <= zmax else 0 
