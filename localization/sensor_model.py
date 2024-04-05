@@ -129,7 +129,9 @@ class SensorModel:
                 probability = self.alpha_hit*self.hit(measured_distance_val, ground_truth_val) + self.alpha_short*self.short(measured_distance_val, ground_truth_val) + self.alpha_max*self.max(measured_distance_val, ground_truth_val) + self.alpha_rand*self.rand(measured_distance_val, ground_truth_val)
                 self.sensor_model_table[measured_distance_val][ground_truth_val] = probability
 
-        # raise NotImplementedError
+        # Assuming self.sensor_model_table is a 2D numpy array
+        row_sums = self.sensor_model_table.sum(axis=1, keepdims=True)
+        self.sensor_model_table = self.sensor_model_table / row_sums
 
     def evaluate(self, particles, observation):
         """
