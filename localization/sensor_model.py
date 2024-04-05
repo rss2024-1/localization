@@ -2,12 +2,13 @@ import numpy as np
 from scan_simulator_2d import PyScanSimulator2D
 # Try to change to just `from scan_simulator_2d import PyScanSimulator2D` 
 # if any error re: scan_simulator_2d occurs
-
+import math
 from tf_transformations import euler_from_quaternion
 
 from nav_msgs.msg import OccupancyGrid
 
 import sys
+import numpy as np
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -31,11 +32,16 @@ class SensorModel:
 
         ####################################
         # Adjust these parameters
-        self.alpha_hit = 0
-        self.alpha_short = 0
-        self.alpha_max = 0
-        self.alpha_rand = 0
-        self.sigma_hit = 0
+        self.alpha_hit = 0.74
+        self.alpha_short = 0.07
+        self.alpha_max = 0.07
+        self.alpha_rand = 0.12
+        self.sigma_hit = 8
+
+        ##### I ADDED
+        self.eta = 1
+        self.epsilon = 1
+        self.zmax = 200
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -66,6 +72,38 @@ class SensorModel:
             self.map_topic,
             self.map_callback,
             1)
+        
+    def hit(self, measured_val, actual_val):
+        d = actual_val
+        zk = measured_val
+        if (0 <= zk) and (zk <= 200):
+            coefficient = self.eta*(1/((2*3.14159*self.sigma_hit**2)**0.5))
+            variables = math.exp(-((zk - d) ** 2) / (2 * self.sigma_hit ** 2))
+            phit = coefficient * variables
+        else:
+            phit = 0
+        return phit
+    
+    def short(self, measured_val, actual_val):
+        d = actual_val
+        zk = measured_val
+        if d > 0 and (0 <= zk) and (zk <= d):
+            pshort = (2/d)*(1 - zk/d)
+        else:
+            pshort = 0
+        return pshort
+
+    def max(self, measured_val, actual_val):
+        if (measured_val >= self.zmax - self.epsilon) and (measured_val <= self.zmax):
+            return 1/self.epsilon
+        else:
+            return 0 
+        
+    def rand(self, measured_val, actual_val):
+        if (measured_val >= 0) and (measured_val <= self.zmax):
+            return 1/self.zmax
+        else:
+            return 0
 
     def precompute_sensor_model(self):
         """
@@ -86,7 +124,11 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-        pass
+        for measured_distance_val in range(self.table_width):
+            for ground_truth_val in range(self.table_width):
+                probability = self.alpha_hit*self.hit(measured_distance_val, ground_truth_val) + self.alpha_short*self.short(measured_distance_val, ground_truth_val) + self.alpha_max*self.max(measured_distance_val, ground_truth_val) + self.alpha_rand*self.rand(measured_distance_val, ground_truth_val)
+                self.sensor_model_table[measured_distance_val][ground_truth_val] = probability
+
         # raise NotImplementedError
 
     def evaluate(self, particles, observation):
@@ -112,6 +154,9 @@ class SensorModel:
 
         if not self.map_set:
             return
+        
+        probabilities = observation[:]
+        
 
         ####################################
         # TODO
