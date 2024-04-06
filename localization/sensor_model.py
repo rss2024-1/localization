@@ -1,3 +1,5 @@
+'''
+
 # import numpy as np
 # from scan_simulator_2d import PyScanSimulator2D
 # # Try to change to just `from scan_simulator_2d import PyScanSimulator2D` 
@@ -120,7 +122,9 @@
 
 #         self.sensor_model_table = table
 
+'''
 
+import rclpy
 import numpy as np
 from scan_simulator_2d import PyScanSimulator2D
 # Try to change to just `from scan_simulator_2d import PyScanSimulator2D` 
@@ -137,6 +141,7 @@ np.set_printoptions(threshold=sys.maxsize)
 class SensorModel:
 
     def __init__(self, node):
+        self.printNode = rclpy.node.Node("printNode")
         node.declare_parameter('map_topic', "default")
         node.declare_parameter('num_beams_per_particle', "default")
         node.declare_parameter('scan_theta_discretization', "default")
@@ -159,9 +164,8 @@ class SensorModel:
         self.alpha_short = 0.07
         self.alpha_max = 0.07
         self.alpha_rand = 0.12
-        self.sigma_hit = 0.5
-        # added myself
-        self.z_max = 1
+        self.sigma_hit = 8.0        # added myself
+        self.z_max = 200
         self.n = 1
         self.epsilon = 1
         self.normalization_constant = 1
@@ -216,6 +220,7 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
+
         
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
@@ -241,7 +246,7 @@ class SensorModel:
         return 2/d*(1-z/d) if (0<=z<=d and d!=0) else 0
 
     def p_max(self, z):
-        return 1/self.epsilon if self.z_max-self.epsilon <= z <= self.z_max else 0
+        return 1/self.epsilon if z == self.z_max else 0
 
     def p_rand(self, z):
         return 1/self.z_max if 0 <= z <= self.z_max else 0        
@@ -266,7 +271,7 @@ class SensorModel:
                the probability of each particle existing
                given the observation and the map.
         """
-
+        
         if not self.map_set:
             return
 
@@ -280,6 +285,10 @@ class SensorModel:
 
         scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
         
+        # self.printNode.get_logger().info("%d" %np.shape(particles)[0])
+        for i in range(len(particles)):
+            self.printNode.get_logger().info("particle %d: (%.2f,%.2f,%.1f)" %(i,particles[i][0], particles[i][1], particles[i][2]))
+        
         try:
             self.num_beams_per_particle == np.shape(scans)[1]
         except AssertionError:
@@ -288,6 +297,7 @@ class SensorModel:
         # convert from meters to pixels
         scans = scans*self.resolution*self.lidar_scale_to_map_scale
         observation = observation*self.resolution*self.lidar_scale_to_map_scale
+        # self.printNode.get_logger().info("%f" % np.shape(scans)[0])
         
         probabilities = np.ones(len(particles))
         for i, particle in enumerate(particles):
@@ -295,12 +305,17 @@ class SensorModel:
                 # get index of map @ ray to lookup probability at location
                 x = int(particle[0] + scans[i, j] * np.cos(particle[2] + j * self.scan_theta_discretization))
                 y = int(particle[1] + scans[i, j] * np.sin(particle[2] + j * self.scan_theta_discretization))
-
+                for k in range(10):
+                    if k%1==0: self.printNode.get_logger().info("index %d, value %d" %(k,self.map[k]))
+                # self.printNode.get_logger().info("%f" % self.map.shape)
+                
                 # check in map bounds
                 if x < 0 or y < 0 or x >= self.map.shape[0] or y >= self.map.shape[1]:
                     continue
 
                 probabilities[i] *= self.sensor_model_table[int(observation[j]), self.map[y, x]]
+                self.printNode.get_logger().info("320")
+                self.printNode.get_logger().info("%f" % probabilities[i])
         
         # do we need to normalize?
         # probabilities /= np.sum(probabilities)
