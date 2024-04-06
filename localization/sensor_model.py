@@ -168,31 +168,24 @@ class SensorModel:
         except AssertionError:
             print("num beams per particle doesn't match after the ray casting")
 
-        # convert from meters to pixels
-        scans = scans*self.resolution*self.lidar_scale_to_map_scale
-        observation = observation*self.resolution*self.lidar_scale_to_map_scale
+        # convert from meters to pixels and make sure they're within 
+        m_to_pix_scale = 1 / (self.resolution * self.lidar_scale_to_map_scale)
+        scans *= m_to_pix_scale
+        observation = observation * m_to_pix_scale
+
+        scans = np.clip(scans, 0, self.z_max)
+        observation = np.clip(observation, 0, self.z_max)
         # self.printNode.get_logger().info("%f" % np.shape(scans)[0])
         
-        probabilities = np.ones(len(particles))
-        for i, particle in enumerate(particles):
-            for j in range(self.num_beams_per_particle):
-                # get index of map @ ray to lookup probability at location
-                x = int(particle[0] + scans[i, j] * np.cos(particle[2] + j * self.scan_theta_discretization))
-                y = int(particle[1] + scans[i, j] * np.sin(particle[2] + j * self.scan_theta_discretization))
-                for k in range(10):
-                    if k%1==0: self.printNode.get_logger().info("index %d, value %d" %(k,self.map[k]))
-                # self.printNode.get_logger().info("%f" % self.map.shape)
-                
-                # check in map bounds
-                if x < 0 or y < 0 or x >= self.map.shape[0] or y >= self.map.shape[1]:
-                    continue
-
-                probabilities[i] *= self.sensor_model_table[int(observation[j]), self.map[y, x]]
-                self.printNode.get_logger().info("320")
-                self.printNode.get_logger().info("%f" % probabilities[i])
-        
-        # do we need to normalize?
-        # probabilities /= np.sum(probabilities)
+        probabilities = np.ones((len(particles),))
+        for i, scan in enumerate(scans):
+            probability = 1.0
+            d = scan.astype(int) # row of scans
+            z_k = observation.astype(int)
+            for d_i, z_ki in zip(d, z_k):
+                probability *= self.sensor_model_table[z_ki][d_i]
+            probabilities[i] = probability
+        probabilities /= sum(probabilities)
         return probabilities
 
         ####################################
