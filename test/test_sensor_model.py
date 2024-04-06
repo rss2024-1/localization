@@ -57,3 +57,4 @@ class TestSensorModel(unittest.TestCase):
 if __name__ == "__main__":
     rospy.init_node("sensor_model_test")
     rostest.rosrun("localization", 'test_sensor_model', TestSensorModel)
+
