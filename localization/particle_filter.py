@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
 import rclpy
 
-from sensor_msgs.msg import PointCloud
+from sensor_msgs.msg import PointCloud, LaserScan
 from geometry_msgs.msg import Point32
 
 assert rclpy
