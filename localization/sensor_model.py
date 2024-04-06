@@ -177,15 +177,15 @@ class SensorModel:
         observation = np.clip(observation, 0, self.z_max)
         # self.printNode.get_logger().info("%f" % np.shape(scans)[0])
         
-        probabilities = np.ones((len(particles),))
+        probabilities = []
         for i, scan in enumerate(scans):
             probability = 1.0
-            d = scan.astype(int) # row of scans
-            z_k = observation.astype(int)
+            d = scan / m_to_pix_scale # get orig scan back??
+            z_k = observation / m_to_pix_scale # orig obs back??
             for d_i, z_ki in zip(d, z_k):
-                probability *= self.sensor_model_table[z_ki][d_i]
-            probabilities[i] = probability
-        probabilities /= sum(probabilities)
+                probability *= self.sensor_model_table[int(z_ki)][int(d_i)]
+            probabilities.append(probability)
+        probabilities = np.power(probabilities, 1/3) # ok
         return probabilities
 
         ####################################
