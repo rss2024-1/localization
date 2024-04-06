@@ -76,23 +76,99 @@ class ParticleFilter(Node):
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
 
-    def laser_callback(self, data):
-        # sensor data; need to use the sensor model to compute
-        # the particle probabilities and resample them
-        pass
+    def laser_callback(self, scan): 
+        probabilities = self.sensor_model.evaluate(self.particles, scan)
+        resampled_particles = np.random.choice(self.particles, p=probabilities)
+        self.particles = resampled_particles
+        self.publish_transform(self.particles)
 
-    def pose_callback(self, data):
-        # odometry data; use the motion model to update the
-        # particle positions; resample particles
-        pass
+    def odom_callback(self, odometry): 
+        updated_particles = self.motion_model.evaluate(self.particles, odometry)
+        
+        # return updated_particles
+        self.particles = updated_particles
+        self.publish_transform(self.particles)
+    
+    def pose_callback(self, pose): 
+        #init particles
+        self.particles = pose + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
+        self.get_logger().info("init particles from pose")
+    
+    def publish_transform(self, particles): 
+        #average particle pose 
+        sin_sum = np.sum(np.sin(self.particles[:,2]))
+        cos_sum = np.sum(np.cos(self.particles[:,2]))
+        avg_angle = np.atan2(sin_sum, cos_sum)
 
-    def odom_callback(self, data):
-        # once particles updated, find average pose and 
-        # publish its transform
-        pass
+        avg_x = np.avg(self.particles[:,0])
+        avg_y = np.avg(self.particles[:,1])
+        
+        particle_pose = [avg_x, avg_y, avg_angle]
+        
+        #step 2: convert robot transform to 4x4 np array 
+        # robot_to_world: np.ndarray = self.tf_to_se3(tf_robot_to_world.transform)
 
-    def get_transformation(self):
-        pass
+        # #step 3: compute current transform of left camera wrt world
+        # left_cam_tf = robot_to_world @ self.left_cam
+
+        # #step 4: compute transform of right camera wrt left 
+        # right_cam_tf = left_cam_tf @ np.linalg.inv(self.right_cam)
+        
+        # #broadcast transforms for cameras to TF tree
+        # now = self.get_clock().now()
+        # left_cam_tf_msg = self.se3_to_tf(left_cam_tf, now, parent='world', child='left_camera')
+        # self.br.sendTransform([tf_robot_to_world, left_cam_tf_msg])
+
+        # right_cam_tf_msg = self.se3_to_tf(right_cam_tf, now, parent='world', child='right_camera')
+        # self.br.sendTransform([tf_robot_to_world, right_cam_tf_msg])
+        
+        #publish transform between /map frame and frame for exp car base link
+        tf_map_baselink = self.sensor_model.map @ particle_pose
+        now = self.get_clock().now()
+        out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
+        self.odom_pub(out)
+
+    def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
+        """
+        Convert a TransformStamped message to a 4x4 SE3 matrix 
+        """
+        q = transform.rotation
+        q = [q.x, q.y, q.z, q.w]
+        t = transform.translation
+        mat = tf_transformations.quaternion_matrix(q)
+        mat[0, 3] = t.x
+        mat[1, 3] = t.y
+        mat[2, 3] = t.z
+        return mat
+
+    def se3_to_tf(self, mat: np.ndarray, time: Any, parent: str, child: str) -> TransformStamped:
+        """
+        Convert a 4x4 SE3 matrix to a TransformStamped message
+        """
+        obj = geometry_msgs.msg.TransformStamped()
+
+        # current time
+        obj.header.stamp = time.to_msg()
+
+        # frame names
+        obj.header.frame_id = parent
+        obj.child_frame_id = child
+
+        # translation component
+        obj.transform.translation.x = mat[0, 3]
+        obj.transform.translation.y = mat[1, 3]
+        obj.transform.translation.z = mat[2, 3]
+
+        # rotation (quaternion)
+        q = tf_transformations.quaternion_from_matrix(mat)
+        obj.transform.rotation.x = q[0]
+        obj.transform.rotation.y = q[1]
+        obj.transform.rotation.z = q[2]
+        obj.transform.rotation.w = q[3]
+
+        return obj
+
+
 
 def main(args=None):
     rclpy.init(args=args)
