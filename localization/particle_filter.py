@@ -77,16 +77,22 @@ class ParticleFilter(Node):
         # and the particle_filter_frame.
 
     def laser_callback(self, data):
+        # sensor data; need to use the sensor model to compute
+        # the particle probabilities and resample them
         pass
 
     def pose_callback(self, data):
+        # odometry data; use the motion model to update the
+        # particle positions; resample particles
         pass
 
     def odom_callback(self, data):
+        # once particles updated, find average pose and 
+        # publish its transform
         pass
 
-
-
+    def get_transformation(self):
+        pass
 
 def main(args=None):
     rclpy.init(args=args)
