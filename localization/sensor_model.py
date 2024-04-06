@@ -1,3 +1,4 @@
+import rclpy
 import numpy as np
 from scan_simulator_2d import PyScanSimulator2D
 # Try to change to just `from scan_simulator_2d import PyScanSimulator2D` 
@@ -11,15 +12,16 @@ import sys
 
 np.set_printoptions(threshold=sys.maxsize)
 
-
 class SensorModel:
 
     def __init__(self, node):
+        self.printNode = rclpy.node.Node("printNode")
         node.declare_parameter('map_topic', "default")
         node.declare_parameter('num_beams_per_particle', "default")
         node.declare_parameter('scan_theta_discretization', "default")
         node.declare_parameter('scan_field_of_view', "default")
         node.declare_parameter('lidar_scale_to_map_scale', 1)
+        node.declare_parameter('sensor_epsilon', 0.1)
 
         self.map_topic = node.get_parameter('map_topic').get_parameter_value().string_value
         self.num_beams_per_particle = node.get_parameter('num_beams_per_particle').get_parameter_value().integer_value
@@ -28,6 +30,7 @@ class SensorModel:
         self.scan_field_of_view = node.get_parameter('scan_field_of_view').get_parameter_value().double_value
         self.lidar_scale_to_map_scale = node.get_parameter(
             'lidar_scale_to_map_scale').get_parameter_value().double_value
+        self.epsilon = node.get_parameter('sensor_epsilon')
 
         ####################################
         # Adjust these parameters
@@ -35,7 +38,10 @@ class SensorModel:
         self.alpha_short = 0.07
         self.alpha_max = 0.07
         self.alpha_rand = 0.12
-        self.sigma_hit = 0.5
+        self.sigma_hit = 8.0        # added myself
+        self.z_max = 200
+        self.n = 1
+        self.epsilon = 1
         self.normalization_constant = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
@@ -88,17 +94,21 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
+
         
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
                 self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
-        self.p_hit_table = np.normalize(self.p_hit_table, axis=1, norm='max') # normalize the columns of the hit table
+        # self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=0) # normalize the columns of the hit table
+        self.p_hit_table /= np.sum(self.p_hit_table, axis=0)
 
         for z_i in range(self.table_width):
             for d_i in range(self.table_width):
                 self.sensor_model_table[z_i][d_i] = self.add_probablities(z_i, d_i, self.p_hit_table[z_i][d_i])
 
-        self.sensor_model_table = np.normalize(self.sensor_model_table, axis=1, norm='max') # normalize the columns
+        # self.sensor_model_table /= np.linalg.norm(self.sensor_model_table, axis=0) # normalize the columns
+        self.sensor_model_table /= np.sum(self.sensor_model_table, axis=0)
+
 
     def add_probablities(self, z, d, p_hit_val):
         return self.alpha_hit*p_hit_val+self.alpha_short*self.p_short(z, d)+self.alpha_max*self.p_max(z)+self.alpha_rand*self.p_rand(z)
@@ -110,10 +120,10 @@ class SensorModel:
         return 2/d*(1-z/d) if (0<=z<=d and d!=0) else 0
 
     def p_max(self, z):
-        return 1/self.epsilon if self.z_max-self.epsilon <= z <= self.z_max else 0
+        return 1/self.epsilon if z == self.z_max else 0
 
     def p_rand(self, z):
-        return 1/self.z_max if 0 <= z <= self.z_max else 0
+        return 1/self.z_max if 0 <= z <= self.z_max else 0        
 
     def evaluate(self, particles, observation):
         """
@@ -135,7 +145,7 @@ class SensorModel:
                the probability of each particle existing
                given the observation and the map.
         """
-
+        
         if not self.map_set:
             return
 
@@ -147,10 +157,36 @@ class SensorModel:
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
 
-        scans = self.scan_sim.scan(particles)
-        observation
+        scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
+        
+        # self.printNode.get_logger().info("%d" %np.shape(particles)[0])
+        for i in range(len(particles)):
+            self.printNode.get_logger().info("particle %d: (%.2f,%.2f,%.1f)" %(i,particles[i][0], particles[i][1], particles[i][2]))
+        
+        try:
+            self.num_beams_per_particle == np.shape(scans)[1]
+        except AssertionError:
+            print("num beams per particle doesn't match after the ray casting")
 
+        # convert from meters to pixels and make sure they're within 
+        m_to_pix_scale = 1 / (self.resolution * self.lidar_scale_to_map_scale)
+        scans *= m_to_pix_scale
+        observation = observation * m_to_pix_scale
+
+        scans = np.clip(scans, 0, self.z_max)
+        observation = np.clip(observation, 0, self.z_max)
+        # self.printNode.get_logger().info("%f" % np.shape(scans)[0])
+        
         probabilities = []
+        for i, scan in enumerate(scans):
+            probability = 1.0
+            d = scan / m_to_pix_scale # get orig scan back??
+            z_k = observation / m_to_pix_scale # orig obs back??
+            for d_i, z_ki in zip(d, z_k):
+                probability *= self.sensor_model_table[int(z_ki)][int(d_i)]
+            probabilities.append(probability)
+        probabilities = np.power(probabilities, 1/3) # ok
+        return probabilities
 
         ####################################
 
