@@ -38,7 +38,7 @@ class SensorModel:
         self.alpha_rand = 0.12
         self.sigma_hit = 0.5
         # added myself
-        self.z_max = 1
+        self.z_max = 200
         self.n = 1
         self.epsilon = 1
         self.normalization_constant = 1
