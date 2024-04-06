@@ -2,13 +2,16 @@ from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseWithCovarianceStamped
+import geometry_msgs
+from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
+import tf_transformations
 
 from rclpy.node import Node
 import rclpy
 from sensor_msgs.msg import LaserScan
 
 assert rclpy
+import numpy as np
 
 
 class ParticleFilter(Node):
@@ -96,12 +99,12 @@ class ParticleFilter(Node):
     
     def publish_transform(self, particles): 
         #average particle pose 
-        sin_sum = np.sum(np.sin(self.particles[:,2]))
-        cos_sum = np.sum(np.cos(self.particles[:,2]))
+        sin_sum = np.sum(np.sin(particles[:,2]))
+        cos_sum = np.sum(np.cos(particles[:,2]))
         avg_angle = np.atan2(sin_sum, cos_sum)
 
-        avg_x = np.avg(self.particles[:,0])
-        avg_y = np.avg(self.particles[:,1])
+        avg_x = np.avg(particles[:,0])
+        avg_y = np.avg(particles[:,1])
         
         particle_pose = [avg_x, avg_y, avg_angle]
         
