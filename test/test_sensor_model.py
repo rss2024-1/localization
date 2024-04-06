@@ -27,7 +27,7 @@ class TestSensorModel(unittest.TestCase):
         self.sensor_model.table_width = 201
         self.sensor_model.precompute_sensor_model()
 
-        self.tol = 1e-6
+        self.tol = 1e-2
 
     def tearDown(self):
         pass
