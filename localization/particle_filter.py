@@ -7,7 +7,11 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from rclpy.node import Node
 import rclpy
 
+from sensor_msgs.msg import PointCloud
+from geometry_msgs.msg import Point32
+
 assert rclpy
+import numpy as np
 
 
 class ParticleFilter(Node):
@@ -74,6 +78,72 @@ class ParticleFilter(Node):
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
+        self.particle_filter_publisher = self.create_publisher()
+
+        self.probabilities = None
+        # Number of particles
+        N = 200
+
+        # Initialize x0 and y0 with noise around 0
+        x0 = np.random.normal(loc=0.0, scale=0.001, size=N)
+        y0 = np.random.normal(loc=0.0, scale=0.001, size=N)
+
+        # Initialize theta0 to 0
+        theta0 = np.zeros(N)
+
+        # Combine x0, y0, and theta0 into a N*3 array
+        self.particles = np.column_stack((x0, y0, theta0))
+        ### 1. Initialize a bunch of particles, with some noise (__init__ function)
+        ### Include a way to visualize the particles too (__init__ function)
+
+        ### While loop (so basicaly as the roobt runs):
+        ###     (in no particular order)
+        ####    2. Make updates to the position via calling motion model. Via motion_model in odom_callback.
+        ####    3. Make updates to our probability distribution of particles. Via sensor_model in laser_callback.
+        ####    finally, pose_callback is designed to just publish what our point cloud is
+
+
+    def laser_callback(self, data):
+        ### sensor_model + "survival of fittest" on the particles
+        probabilities = self.sensor_model.evaluate(self.particles, data)
+        self.probabilities = probabilities
+        # Generate a list of indices to select from self.particles
+        indices = np.arange(len(self.particles))
+
+        # Randomly sample indices based on probabilities
+        sampled_indices = np.random.choice(indices, size=len(self.particles), p=probabilities)
+
+        # Create the new particles array
+        self.particles = self.particles[sampled_indices]
+
+
+    def pose_callback(self, data):
+        # Compute the weighted average of the particles
+        ### compute average particle pose, publish, weight on probabilities
+        weighted_particles = np.average(self.particles, weights=self.probabilities, axis=0)
+        x_avg = weighted_particles[0]
+        y_avg = weighted_particles[1]
+        theta_avg = weighted_particles[2]
+
+        # Create an Odometry message
+        odom_msg = Odometry()
+
+        # Fill in the message fields
+        odom_msg.pose.pose.position.x = x_avg
+        odom_msg.pose.pose.position.y = y_avg
+        odom_msg.pose.pose.orientation.z = np.sin(theta_avg / 2.0)
+        odom_msg.pose.pose.orientation.w = np.cos(theta_avg / 2.0)
+
+        # Set the frame_id
+        odom_msg.header.frame_id = "/map"
+
+        # Publish the message
+        self.odom_pub.publish(odom_msg)
+
+
+    def odom_callback(self, data):
+        ### motion_model
+        self.particles = self.motion_model.evaluate(self.particles, data)
 
 
 def main(args=None):
