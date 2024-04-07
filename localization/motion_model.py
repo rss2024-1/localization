@@ -41,8 +41,8 @@ class MotionModel:
         dx_rotated = cos_thetas * dx - sin_thetas * dy
         dy_rotated = sin_thetas * dx + cos_thetas * dy
 
-        particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = .001, size=(len(particles),))
-        particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = .001, size=(len(particles),))
+        particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = .1, size=(len(particles),))
+        particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = .1, size=(len(particles),))
         particles[:, 2] += dtheta
 
         # Normalize angles to the range [-pi, pi]
