@@ -87,6 +87,7 @@ class ParticleFilter(Node):
         self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
         
         self.frame = '/base_link_pf'
+        # self.frame = '/map'
 
     def laser_callback(self, scan): 
         probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
@@ -112,28 +113,6 @@ class ParticleFilter(Node):
         # return updated_particles
         self.particles = updated_particles
         self.publish_transform(self.particles)
-    
-    # def pose_callback(self, msg): 
-    #     """
-    #         var:
-    #             msg = PoseWithCovariance Message, vars: pose, covariance
-    #                 pose = Pose Message, vars: Point position, Quaternion orientation
-    #     """
-    #     #init particles
-    #     # np.random.choice: (original array size, desired sample size, probabilities list of original array)
-    #     # self.particles = np.random.choice(self.particles, )
-    #     x = msg.pose.pose.position.x
-    #     y = msg.pose.pose.position.y
-    #     z = msg.pose.pose.position.z
-
-    #     q_x = msg.pose.pose.orientation.x
-    #     q_y = msg.pose.pose.orientation.y
-    #     q_z = msg.pose.pose.orientation.z
-    #     q_w = msg.pose.pose.orientation.w
-
-
-    #     self.particles = np.array(pose) + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
-    #     self.get_logger().info("init particles from pose")
         
     def pose_callback(self, msg): 
         """
@@ -144,25 +123,9 @@ class ParticleFilter(Node):
         # Extract position
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
-        th = 2*np.arccos(msg.pose.pose.orientation.w)
-        
-        # self.get_logger().info(str(x))
-        # self.get_logger().info(str(y))
-        # self.get_logger().info(str(th))
-
-        # # Update particles with the new position and orientation
-        # newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
-        # newy = y +  np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
-        # newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
-        # # self.get_logger().info(newx, newy, newth)
-
-        # # newth = 
-        # # self.particles = np.swapaxes(np.array([newx, newy, newth]))
-        # # self.sensor_model.evaluate(self.particles, )
-        # # self.particles = np.transpose(np.array([newx, newy, newth]))
-        # # self.particles = np.array([np.array([x,y,th]) for x,y,th in zip(newx, newy, newth)])        
-        
-        # self.get_logger().info("Initialized particles from pose")
+        # euler fr/ q
+        odom_quat = tf.quaternion_from_euler(0, 0, msg.pose.pose.orientation.w)
+        th = odom_quat[3]
 
         od = [x, y, th]
         updated_particles = self.motion_model.evaluate(self.particles, od)
@@ -197,13 +160,13 @@ class ParticleFilter(Node):
         #header
 
         odom_pub_msg.header.stamp = rclpy.time.Time().to_msg()
-        odom_pub_msg.header.frame_id = self.frame
+        odom_pub_msg.header.frame_id = "/map"
         self.odom_pub.publish(odom_pub_msg)
 
         #posearray
         particles_msg = PoseArray()
         particles_msg.header.stamp = rclpy.time.Time().to_msg()
-        particles_msg.header.frame_id = self.frame
+        particles_msg.header.frame_id = "/map"
         poses = []
         for x,y,th in self.particles:
             pose_msg = Pose() 
