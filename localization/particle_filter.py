@@ -84,7 +84,7 @@ class ParticleFilter(Node):
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
 
-        # self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
+        self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
         self.frame = '/base_link_pf'
 
     def laser_callback(self, scan): 
@@ -97,6 +97,7 @@ class ParticleFilter(Node):
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
+
         self.publish_transform(self.particles)
 
 
@@ -168,6 +169,7 @@ class ParticleFilter(Node):
         # return updated_particles
         self.particles = updated_particles
         self.publish_transform(self.particles)
+
 
     def publish_transform(self, particles): 
         #average particle pose 
