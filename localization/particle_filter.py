@@ -124,7 +124,7 @@ class ParticleFilter(Node):
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
         # euler fr/ q
-        odom_quat = tf.quaternion_from_euler(0, 0, msg.pose.pose.orientation.w)
+        odom_quat = tf.euler_from_quaternion(0, 0, msg.pose.pose.orientation)
         th = odom_quat[3]
 
         od = [x, y, th]
