@@ -83,9 +83,14 @@ class ParticleFilter(Node):
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
-
+    
     def laser_callback(self, scan): 
-        probabilities = self.sensor_model.evaluate(self.particles, scan)
+        probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
+        try: 
+            probabilities /= sum(probabilities)
+        except: 
+            probabilities = np.empty(100)
+            probabilities.fill(1/100) 
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
@@ -103,14 +108,48 @@ class ParticleFilter(Node):
         self.particles = updated_particles
         self.publish_transform(self.particles)
     
-    def pose_callback(self, pose): 
-        #init particles
-        # np.random.choice: (original array size, desired sample size, probabilities list of original array)
-        # self.particles = np.random.choice(self.particles, )
+    # def pose_callback(self, msg): 
+    #     """
+    #         var:
+    #             msg = PoseWithCovariance Message, vars: pose, covariance
+    #                 pose = Pose Message, vars: Point position, Quaternion orientation
+    #     """
+    #     #init particles
+    #     # np.random.choice: (original array size, desired sample size, probabilities list of original array)
+    #     # self.particles = np.random.choice(self.particles, )
+    #     x = msg.pose.pose.position.x
+    #     y = msg.pose.pose.position.y
+    #     z = msg.pose.pose.position.z
 
-        self.particles = np.array(pose) + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
-        self.get_logger().info("init particles from pose")
-    
+    #     q_x = msg.pose.pose.orientation.x
+    #     q_y = msg.pose.pose.orientation.y
+    #     q_z = msg.pose.pose.orientation.z
+    #     q_w = msg.pose.pose.orientation.w
+
+
+    #     self.particles = np.array(pose) + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
+    #     self.get_logger().info("init particles from pose")
+        
+    def pose_callback(self, msg): 
+        """
+        var:
+            msg = PoseWithCovarianceStamped Message, vars: pose, covariance
+                pose = Pose Message, vars: Point position, Quaternion orientation
+        """
+        # Extract position
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        th = 2*np.arccos(msg.pose.pose.orientation.w)
+
+        # Update particles with the new position and orientation
+        newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
+        newy = y +  np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
+        newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
+
+        self.particles = np.array([np.array([x,y,th]) for x,y,th in zip(newx, newy, newth)])        
+        
+        self.get_logger().info("Initialized particles from pose")
+
     def publish_transform(self, particles): 
         #average particle pose 
         sin_sum = np.sum(np.sin(particles[:,2]))
@@ -120,33 +159,18 @@ class ParticleFilter(Node):
         avg_x = np.average(particles[:,0])
         avg_y = np.average(particles[:,1])
         
-        particle_pose = [avg_x, avg_y, avg_angle]
-        
-        #step 2: convert robot transform to 4x4 np array 
-        # robot_to_world: np.ndarray = self.tf_to_se3(tf_robot_to_world.transform)
-
-        # #step 3: compute current transform of left camera wrt world
-        # left_cam_tf = robot_to_world @ self.left_cam
-
-        # #step 4: compute transform of right camera wrt left 
-        # right_cam_tf = left_cam_tf @ np.linalg.inv(self.right_cam)
-        
-        # #broadcast transforms for cameras to TF tree
-        # now = self.get_clock().now()
-        # left_cam_tf_msg = self.se3_to_tf(left_cam_tf, now, parent='world', child='left_camera')
-        # self.br.sendTransform([tf_robot_to_world, left_cam_tf_msg])
-
-        # right_cam_tf_msg = self.se3_to_tf(right_cam_tf, now, parent='world', child='right_camera')
-        # self.br.sendTransform([tf_robot_to_world, right_cam_tf_msg])
+        # particle_pose = [avg_x, avg_y, avg_angle]
         
         #publish transform between /map frame and frame for exp car base link
-        tf_map_baselink = self.sensor_model.map @ particle_pose
-        now = self.get_clock().now()
-        out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
+        # tf_map_baselink = self.sensor_model.map @ particle_pose
+        # now = self.get_clock().now()
+        # out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
         
         odom_pub_msg = Odometry() # creating message template in case ros is mad
-        odom_pub_msg.pose = out # specifically ONLY publish to the pose variable
-        self.odom_pub(odom_pub_msg)
+        odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
+        odom_pub_msg.pose.pose.position.y = avg_y
+        odom_pub_msg.pose.pose.orientation.w = avg_angle
+        self.odom_pub.publish(odom_pub_msg)
 
     def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
         """
