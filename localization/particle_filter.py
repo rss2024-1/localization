@@ -86,6 +86,13 @@ class ParticleFilter(Node):
     
     def laser_callback(self, scan): 
         probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
+        
+        try: 
+            probabilities /= sum(probabilities)
+        except: 
+            probabilities = np.empty(100)
+            probabilities.fill(1/100) 
+
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
