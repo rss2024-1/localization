@@ -5,7 +5,7 @@ from rclpy.time import Time
 from nav_msgs.msg import Odometry
 import geometry_msgs
 from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped, PoseArray, Pose, Quaternion
-import tf_transformations, tf2_geometry_msgs
+import tf_transformations as tf
 
 from rclpy.node import Node
 import rclpy
@@ -191,7 +191,7 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
-        odom_quat = tf2_geometry_msgs.transformations.quaternion_from_euler(0, 0, avg_angle)
+        odom_quat = tf.transformations.quaternion_from_euler(0, 0, avg_angle)
         odom_pub_msg.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
@@ -209,7 +209,7 @@ class ParticleFilter(Node):
             pose_msg.position.x = x
             pose_msg.position.y = y
             pose_msg.position.z = 0.0
-            quat = tf2_geometry_msgs.transformations.quaternion_from_euler(0, 0, th)
+            quat = tf.transformations.quaternion_from_euler(0, 0, th)
             pose_msg.orientation = Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
             poses.append(pose_msg)
         particles_msg.poses = poses
@@ -223,7 +223,7 @@ class ParticleFilter(Node):
         q = transform.rotation
         q = [q.x, q.y, q.z, q.w]
         t = transform.translation
-        mat = tf_transformations.quaternion_matrix(q)
+        mat = tf.quaternion_matrix(q)
         mat[0, 3] = t.x
         mat[1, 3] = t.y
         mat[2, 3] = t.z
@@ -248,7 +248,7 @@ class ParticleFilter(Node):
         obj.transform.translation.z = mat[2, 3]
 
         # rotation (quaternion)
-        q = tf_transformations.quaternion_from_matrix(mat)
+        q = tf.quaternion_from_matrix(mat)
         obj.transform.rotation.x = q[0]
         obj.transform.rotation.y = q[1]
         obj.transform.rotation.z = q[2]
