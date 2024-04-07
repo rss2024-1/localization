@@ -88,6 +88,7 @@ class ParticleFilter(Node):
         
         self.frame = '/map'
         # self.frame = '/map'
+        self.curr_time = self.get_clock().now()
 
     def laser_callback(self, scan): 
         probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
@@ -104,9 +105,12 @@ class ParticleFilter(Node):
 
 
     def odom_callback(self, odometry): 
-        dx = odometry.twist.twist.linear.x
-        dy = odometry.twist.twist.linear.y
-        dth = odometry.twist.twist.angular.z
+        dt = self.get_clock().now() - self.curr_time
+        self.curr_time = self.get_clock().now()
+
+        dx = odometry.twist.twist.linear.x * dt
+        dy = odometry.twist.twist.linear.y * dt
+        dth = odometry.twist.twist.angular.z * dt
         od = [dx, dy, dth]
         updated_particles = self.motion_model.evaluate(self.particles, od)
         
@@ -120,19 +124,25 @@ class ParticleFilter(Node):
             msg = PoseWithCovarianceStamped Message, vars: pose, covariance
                 pose = Pose Message, vars: Point position, Quaternion orientation
         """
-        # Extract position
-        x = msg.pose.pose.position.x
-        y = msg.pose.pose.position.y
-        # euler fr/ q
-        odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
+        # # Extract position
+        # x = msg.pose.pose.position.x
+        # y = msg.pose.pose.position.y
+        # # euler fr/ q
+        # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
+        # self.get_logger().info("in pose callback")
+        # self.get_logger().info(f"X: {x}")
+        # self.get_logger().info(f"y: {y}")
         # self.get_logger().info(f"odom_quat is: {odom_quat}")
-        th = odom_quat[2]
+        # th = 0# odom_quat[2]
 
-        od = [x, y, th]
-        updated_particles = self.motion_model.evaluate(self.particles, od)
+        
+        # od = [x, y, th]
+        # # updated_particles = self.motion_model.evaluate(self.particles, od)
+        # self.particles[:,0] = x
+        # self.particles[:,1]=y
         
         # return updated_particles
-        self.particles = updated_particles
+        # self.particles = updated_particles
         self.publish_transform(self.particles)
 
 
@@ -157,6 +167,9 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
+        self.get_logger().info(f"avg X: {avg_x}")
+        self.get_logger().info(f"avg y: {avg_y}")
+        self.get_logger().info(f"odom quat: {odom_quat}")
         odom_pub_msg.pose.pose.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
