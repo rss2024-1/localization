@@ -1,14 +1,15 @@
 from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
+from rclpy.time import Time
 
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseWithCovarianceStamped
+import geometry_msgs
+from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
+import tf_transformations
 
 from rclpy.node import Node
 import rclpy
-
-from sensor_msgs.msg import PointCloud, LaserScan
-from geometry_msgs.msg import Point32
+from sensor_msgs.msg import LaserScan
 
 assert rclpy
 import numpy as np
@@ -21,6 +22,7 @@ class ParticleFilter(Node):
 
         self.declare_parameter('particle_filter_frame', "default")
         self.particle_filter_frame = self.get_parameter('particle_filter_frame').get_parameter_value().string_value
+        self.particles = np.zeros((100,3))
 
         #  *Important Note #1:* It is critical for your particle
         #     filter to obtain the following topic names from the
@@ -63,6 +65,9 @@ class ParticleFilter(Node):
 
         self.odom_pub = self.create_publisher(Odometry, "/pf/pose/odom", 1)
 
+        ## personal notes:
+        ## need to get odom reading (which is a twist), convert it 
+
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
@@ -78,72 +83,111 @@ class ParticleFilter(Node):
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
-        self.particle_filter_publisher = self.create_publisher()
 
-        self.probabilities = None
-        # Number of particles
-        N = 200
-
-        # Initialize x0 and y0 with noise around 0
-        x0 = np.random.normal(loc=0.0, scale=0.001, size=N)
-        y0 = np.random.normal(loc=0.0, scale=0.001, size=N)
-
-        # Initialize theta0 to 0
-        theta0 = np.zeros(N)
-
-        # Combine x0, y0, and theta0 into a N*3 array
-        self.particles = np.column_stack((x0, y0, theta0))
-        ### 1. Initialize a bunch of particles, with some noise (__init__ function)
-        ### Include a way to visualize the particles too (__init__ function)
-
-        ### While loop (so basicaly as the roobt runs):
-        ###     (in no particular order)
-        ####    2. Make updates to the position via calling motion model. Via motion_model in odom_callback.
-        ####    3. Make updates to our probability distribution of particles. Via sensor_model in laser_callback.
-        ####    finally, pose_callback is designed to just publish what our point cloud is
+    def laser_callback(self, scan): 
+        probabilities = self.sensor_model.evaluate(self.particles, scan)
+        resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
+        resampled_particles = self.particles[resampled_indices]
+        self.particles = resampled_particles
+        self.publish_transform(self.particles)
 
 
-    def laser_callback(self, data):
-        ### sensor_model + "survival of fittest" on the particles
-        probabilities = self.sensor_model.evaluate(self.particles, data)
-        self.probabilities = probabilities
-        # Generate a list of indices to select from self.particles
-        indices = np.arange(len(self.particles))
+    def odom_callback(self, odometry): 
+        dx = odometry.twist.twist.linear.x
+        dy = odometry.twist.twist.linear.y
+        dth = odometry.twist.twist.angular.z
+        od = [dx, dy, dth]
+        updated_particles = self.motion_model.evaluate(self.particles, od)
+        
+        # return updated_particles
+        self.particles = updated_particles
+        self.publish_transform(self.particles)
+    
+    def pose_callback(self, pose): 
+        #init particles
+        # np.random.choice: (original array size, desired sample size, probabilities list of original array)
+        # self.particles = np.random.choice(self.particles, )
 
-        # Randomly sample indices based on probabilities
-        sampled_indices = np.random.choice(indices, size=len(self.particles), p=probabilities)
+        self.particles = np.array(pose) + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
+        self.get_logger().info("init particles from pose")
+    
+    def publish_transform(self, particles): 
+        #average particle pose 
+        sin_sum = np.sum(np.sin(particles[:,2]))
+        cos_sum = np.sum(np.cos(particles[:,2]))
+        avg_angle = np.arctan2(sin_sum, cos_sum)
 
-        # Create the new particles array
-        self.particles = self.particles[sampled_indices]
+        avg_x = np.average(particles[:,0])
+        avg_y = np.average(particles[:,1])
+        
+        particle_pose = [avg_x, avg_y, avg_angle]
+        
+        #step 2: convert robot transform to 4x4 np array 
+        # robot_to_world: np.ndarray = self.tf_to_se3(tf_robot_to_world.transform)
 
+        # #step 3: compute current transform of left camera wrt world
+        # left_cam_tf = robot_to_world @ self.left_cam
 
-    def pose_callback(self, data):
-        # Compute the weighted average of the particles
-        ### compute average particle pose, publish, weight on probabilities
-        weighted_particles = np.average(self.particles, weights=self.probabilities, axis=0)
-        x_avg = weighted_particles[0]
-        y_avg = weighted_particles[1]
-        theta_avg = weighted_particles[2]
+        # #step 4: compute transform of right camera wrt left 
+        # right_cam_tf = left_cam_tf @ np.linalg.inv(self.right_cam)
+        
+        # #broadcast transforms for cameras to TF tree
+        # now = self.get_clock().now()
+        # left_cam_tf_msg = self.se3_to_tf(left_cam_tf, now, parent='world', child='left_camera')
+        # self.br.sendTransform([tf_robot_to_world, left_cam_tf_msg])
 
-        # Create an Odometry message
-        odom_msg = Odometry()
+        # right_cam_tf_msg = self.se3_to_tf(right_cam_tf, now, parent='world', child='right_camera')
+        # self.br.sendTransform([tf_robot_to_world, right_cam_tf_msg])
+        
+        #publish transform between /map frame and frame for exp car base link
+        tf_map_baselink = self.sensor_model.map @ particle_pose
+        now = self.get_clock().now()
+        out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
+        
+        odom_pub_msg = Odometry() # creating message template in case ros is mad
+        odom_pub_msg.pose = out # specifically ONLY publish to the pose variable
+        self.odom_pub(odom_pub_msg)
 
-        # Fill in the message fields
-        odom_msg.pose.pose.position.x = x_avg
-        odom_msg.pose.pose.position.y = y_avg
-        odom_msg.pose.pose.orientation.z = np.sin(theta_avg / 2.0)
-        odom_msg.pose.pose.orientation.w = np.cos(theta_avg / 2.0)
+    def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
+        """
+        Convert a TransformStamped message to a 4x4 SE3 matrix 
+        """
+        q = transform.rotation
+        q = [q.x, q.y, q.z, q.w]
+        t = transform.translation
+        mat = tf_transformations.quaternion_matrix(q)
+        mat[0, 3] = t.x
+        mat[1, 3] = t.y
+        mat[2, 3] = t.z
+        return mat
 
-        # Set the frame_id
-        odom_msg.header.frame_id = "/map"
+    def se3_to_tf(self, mat: np.ndarray, time: Time, parent: str, child: str) -> TransformStamped:
+        """
+        Convert a 4x4 SE3 matrix to a TransformStamped message
+        """
+        obj = geometry_msgs.msg.TransformStamped()
 
-        # Publish the message
-        self.odom_pub.publish(odom_msg)
+        # current time
+        obj.header.stamp = time.to_msg()
 
+        # frame names
+        obj.header.frame_id = parent
+        obj.child_frame_id = child
 
-    def odom_callback(self, data):
-        ### motion_model
-        self.particles = self.motion_model.evaluate(self.particles, data)
+        # translation component
+        obj.transform.translation.x = mat[0, 3]
+        obj.transform.translation.y = mat[1, 3]
+        obj.transform.translation.z = mat[2, 3]
+
+        # rotation (quaternion)
+        q = tf_transformations.quaternion_from_matrix(mat)
+        obj.transform.rotation.x = q[0]
+        obj.transform.rotation.y = q[1]
+        obj.transform.rotation.z = q[2]
+        obj.transform.rotation.w = q[3]
+
+        return obj
+
 
 
 def main(args=None):
