@@ -191,7 +191,7 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
-        odom_quat = tf.transformations.quaternion_from_euler(0, 0, avg_angle)
+        odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
         odom_pub_msg.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
@@ -209,52 +209,52 @@ class ParticleFilter(Node):
             pose_msg.position.x = x
             pose_msg.position.y = y
             pose_msg.position.z = 0.0
-            quat = tf.transformations.quaternion_from_euler(0, 0, th)
+            quat = tf.quaternion_from_euler(0, 0, th)
             pose_msg.orientation = Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
             poses.append(pose_msg)
         particles_msg.poses = poses
-        self.particles_pub(particles_msg)
+        self.particles_pub.publish(particles_msg)
 
 
-    def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
-        """
-        Convert a TransformStamped message to a 4x4 SE3 matrix 
-        """
-        q = transform.rotation
-        q = [q.x, q.y, q.z, q.w]
-        t = transform.translation
-        mat = tf.quaternion_matrix(q)
-        mat[0, 3] = t.x
-        mat[1, 3] = t.y
-        mat[2, 3] = t.z
-        return mat
+    # def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
+    #     """
+    #     Convert a TransformStamped message to a 4x4 SE3 matrix 
+    #     """
+    #     q = transform.rotation
+    #     q = [q.x, q.y, q.z, q.w]
+    #     t = transform.translation
+    #     mat = tf.quaternion_matrix(q)
+    #     mat[0, 3] = t.x
+    #     mat[1, 3] = t.y
+    #     mat[2, 3] = t.z
+    #     return mat
 
-    def se3_to_tf(self, mat: np.ndarray, time: Time, parent: str, child: str) -> TransformStamped:
-        """
-        Convert a 4x4 SE3 matrix to a TransformStamped message
-        """
-        obj = geometry_msgs.msg.TransformStamped()
+    # def se3_to_tf(self, mat: np.ndarray, time: Time, parent: str, child: str) -> TransformStamped:
+    #     """
+    #     Convert a 4x4 SE3 matrix to a TransformStamped message
+    #     """
+    #     obj = geometry_msgs.msg.TransformStamped()
 
-        # current time
-        obj.header.stamp = time.to_msg()
+    #     # current time
+    #     obj.header.stamp = time.to_msg()
 
-        # frame names
-        obj.header.frame_id = parent
-        obj.child_frame_id = child
+    #     # frame names
+    #     obj.header.frame_id = parent
+    #     obj.child_frame_id = child
 
-        # translation component
-        obj.transform.translation.x = mat[0, 3]
-        obj.transform.translation.y = mat[1, 3]
-        obj.transform.translation.z = mat[2, 3]
+    #     # translation component
+    #     obj.transform.translation.x = mat[0, 3]
+    #     obj.transform.translation.y = mat[1, 3]
+    #     obj.transform.translation.z = mat[2, 3]
 
-        # rotation (quaternion)
-        q = tf.quaternion_from_matrix(mat)
-        obj.transform.rotation.x = q[0]
-        obj.transform.rotation.y = q[1]
-        obj.transform.rotation.z = q[2]
-        obj.transform.rotation.w = q[3]
+    #     # rotation (quaternion)
+    #     q = tf.quaternion_from_matrix(mat)
+    #     obj.transform.rotation.x = q[0]
+    #     obj.transform.rotation.y = q[1]
+    #     obj.transform.rotation.z = q[2]
+    #     obj.transform.rotation.w = q[3]
 
-        return obj
+    #     return obj
 
 
 
