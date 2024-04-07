@@ -190,7 +190,9 @@ class ParticleFilter(Node):
         odom_pub_msg = Odometry() # creating message template in case ros is mad
         odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
         odom_pub_msg.pose.pose.position.y = avg_y
-        odom_pub_msg.pose.pose.orientation.w = avg_angle
+        odom_pub_msg.pose.pose.position.z = 0.0
+        odom_quat = tf2_geometry_msgs.transformations.quaternion_from_euler(0, 0, avg_angle)
+        odom_pub_msg.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
         odom_pub_msg.header.stamp = rclpy.time.Time().to_msg()
@@ -202,8 +204,8 @@ class ParticleFilter(Node):
         particles_msg.header.stamp = rclpy.time.Time().to_msg()
         particles_msg.header.frame_id = self.frame
         poses = []
-        pose_msg = Pose() ## should I be doing this out here????
         for x,y,th in self.particles:
+            pose_msg = Pose() 
             pose_msg.position.x = x
             pose_msg.position.y = y
             pose_msg.position.z = 0.0
