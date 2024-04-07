@@ -192,7 +192,7 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
-        odom_pub_msg.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
+        odom_pub_msg.pose.pose.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
         odom_pub_msg.header.stamp = rclpy.time.Time().to_msg()
