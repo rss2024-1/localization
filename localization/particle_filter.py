@@ -4,7 +4,7 @@ from rclpy.time import Time
 
 from nav_msgs.msg import Odometry
 import geometry_msgs
-from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, TransformStamped, PoseArray
 import tf_transformations
 
 from rclpy.node import Node
@@ -83,7 +83,10 @@ class ParticleFilter(Node):
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
-    
+
+        # self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
+        self.frame = '/base_link_pf'
+
     def laser_callback(self, scan): 
         probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
         try: 
@@ -140,15 +143,31 @@ class ParticleFilter(Node):
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
         th = 2*np.arccos(msg.pose.pose.orientation.w)
-
-        # Update particles with the new position and orientation
-        newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
-        newy = y +  np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
-        newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
-
-        self.particles = np.array([np.array([x,y,th]) for x,y,th in zip(newx, newy, newth)])        
         
-        self.get_logger().info("Initialized particles from pose")
+        # self.get_logger().info(str(x))
+        # self.get_logger().info(str(y))
+        # self.get_logger().info(str(th))
+
+        # # Update particles with the new position and orientation
+        # newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
+        # newy = y +  np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles), 2))
+        # newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
+        # # self.get_logger().info(newx, newy, newth)
+
+        # # newth = 
+        # # self.particles = np.swapaxes(np.array([newx, newy, newth]))
+        # # self.sensor_model.evaluate(self.particles, )
+        # # self.particles = np.transpose(np.array([newx, newy, newth]))
+        # # self.particles = np.array([np.array([x,y,th]) for x,y,th in zip(newx, newy, newth)])        
+        
+        # self.get_logger().info("Initialized particles from pose")
+
+        od = [x, y, th]
+        updated_particles = self.motion_model.evaluate(self.particles, od)
+        
+        # return updated_particles
+        self.particles = updated_particles
+        self.publish_transform(self.particles)
 
     def publish_transform(self, particles): 
         #average particle pose 
@@ -170,7 +189,22 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.orientation.w = avg_angle
+        #header
+
+        odom_pub_msg.header.stamp = rclpy.time.Time().to_msg()
+        odom_pub_msg.header.frame_id = self.frame
         self.odom_pub.publish(odom_pub_msg)
+
+        #posearray
+        # particles_msg = PoseArray()
+        # particles_msg.header.stamp = rclpy.time.Time().to_msg()
+        # particles_msg.header.frame_id = self.frame
+        # particles_msg.poses = [i[0], i[1], i[2] for i in self.particles]
+        # np.array[]
+        # pose.position
+        # quaternion
+        # self.particles_pub(particles_msg)
+
 
     def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
         """
