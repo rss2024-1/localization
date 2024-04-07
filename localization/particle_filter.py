@@ -85,6 +85,7 @@ class ParticleFilter(Node):
         # and the particle_filter_frame.
 
         self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
+        
         self.frame = '/base_link_pf'
 
     def laser_callback(self, scan): 
