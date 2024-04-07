@@ -170,8 +170,8 @@ class SensorModel:
 
         # convert from meters to pixels and make sure they're within 
         m_to_pix_scale = 1 / (self.resolution * self.lidar_scale_to_map_scale)
-        scans *= m_to_pix_scale
-        observation = observation * m_to_pix_scale
+        scans = np.array(scans) * m_to_pix_scale
+        observation = np.array(observation) * m_to_pix_scale
 
         scans = np.clip(scans, 0, self.z_max)
         observation = np.clip(observation, 0, self.z_max)
