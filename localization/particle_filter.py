@@ -1,5 +1,6 @@
 from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
+from rclpy.time import Time
 
 from nav_msgs.msg import Odometry
 import geometry_msgs
@@ -21,6 +22,7 @@ class ParticleFilter(Node):
 
         self.declare_parameter('particle_filter_frame', "default")
         self.particle_filter_frame = self.get_parameter('particle_filter_frame').get_parameter_value().string_value
+        self.particles = np.zeros((100,3))
 
         #  *Important Note #1:* It is critical for your particle
         #     filter to obtain the following topic names from the
@@ -63,6 +65,9 @@ class ParticleFilter(Node):
 
         self.odom_pub = self.create_publisher(Odometry, "/pf/pose/odom", 1)
 
+        ## personal notes:
+        ## need to get odom reading (which is a twist), convert it 
+
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
@@ -81,12 +86,18 @@ class ParticleFilter(Node):
 
     def laser_callback(self, scan): 
         probabilities = self.sensor_model.evaluate(self.particles, scan)
-        resampled_particles = np.random.choice(self.particles, p=probabilities)
+        resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
+        resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
         self.publish_transform(self.particles)
 
+
     def odom_callback(self, odometry): 
-        updated_particles = self.motion_model.evaluate(self.particles, odometry)
+        dx = odometry.twist.twist.linear.x
+        dy = odometry.twist.twist.linear.y
+        dth = odometry.twist.twist.angular.z
+        od = [dx, dy, dth]
+        updated_particles = self.motion_model.evaluate(self.particles, od)
         
         # return updated_particles
         self.particles = updated_particles
@@ -94,17 +105,20 @@ class ParticleFilter(Node):
     
     def pose_callback(self, pose): 
         #init particles
-        self.particles = pose + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
+        # np.random.choice: (original array size, desired sample size, probabilities list of original array)
+        # self.particles = np.random.choice(self.particles, )
+
+        self.particles = np.array(pose) + np.random.normal(loc=0.0, scale = .001, size=(len(self.particles),3))
         self.get_logger().info("init particles from pose")
     
     def publish_transform(self, particles): 
         #average particle pose 
         sin_sum = np.sum(np.sin(particles[:,2]))
         cos_sum = np.sum(np.cos(particles[:,2]))
-        avg_angle = np.atan2(sin_sum, cos_sum)
+        avg_angle = np.arctan2(sin_sum, cos_sum)
 
-        avg_x = np.avg(particles[:,0])
-        avg_y = np.avg(particles[:,1])
+        avg_x = np.average(particles[:,0])
+        avg_y = np.average(particles[:,1])
         
         particle_pose = [avg_x, avg_y, avg_angle]
         
@@ -129,7 +143,10 @@ class ParticleFilter(Node):
         tf_map_baselink = self.sensor_model.map @ particle_pose
         now = self.get_clock().now()
         out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
-        self.odom_pub(out)
+        
+        odom_pub_msg = Odometry() # creating message template in case ros is mad
+        odom_pub_msg.pose = out # specifically ONLY publish to the pose variable
+        self.odom_pub(odom_pub_msg)
 
     def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
         """
@@ -144,7 +161,7 @@ class ParticleFilter(Node):
         mat[2, 3] = t.z
         return mat
 
-    def se3_to_tf(self, mat: np.ndarray, time: Any, parent: str, child: str) -> TransformStamped:
+    def se3_to_tf(self, mat: np.ndarray, time: Time, parent: str, child: str) -> TransformStamped:
         """
         Convert a 4x4 SE3 matrix to a TransformStamped message
         """
