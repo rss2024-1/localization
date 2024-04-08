@@ -22,7 +22,7 @@ class ParticleFilter(Node):
 
         self.declare_parameter('particle_filter_frame', "default")
         self.particle_filter_frame = self.get_parameter('particle_filter_frame').get_parameter_value().string_value
-        self.particles = np.zeros((100,3))
+        self.particles = np.zeros((200,3))
 
         #  *Important Note #1:* It is critical for your particle
         #     filter to obtain the following topic names from the
@@ -87,7 +87,6 @@ class ParticleFilter(Node):
         self.particles_pub = self.create_publisher(PoseArray, '/posearray', 1)
         
         self.frame = '/map'
-        # self.frame = '/map'
         self.curr_time = self.get_clock().now()
 
     def laser_callback(self, scan): 
@@ -95,10 +94,10 @@ class ParticleFilter(Node):
         try: 
             probabilities /= sum(probabilities)
         except: 
-            probabilities = np.empty(100)
-            probabilities.fill(1/100) 
+            probabilities = np.empty(200)
+            probabilities.fill(1/200) 
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
-        resampled_particles = self.particles[resampled_indices]
+        resampled_particles = [self.particles[i] for i in resampled_indices] # figure out how to np
         self.particles = resampled_particles
 
         self.publish_transform(self.particles)
@@ -112,10 +111,8 @@ class ParticleFilter(Node):
         dy = odometry.twist.twist.linear.y * dt
         dth = odometry.twist.twist.angular.z * dt
         od = [dx, dy, dth]
-        updated_particles = self.motion_model.evaluate(self.particles, od)
-        
-        # return updated_particles
-        self.particles = updated_particles
+        self.particles = self.motion_model.evaluate(self.particles, od)
+
         self.publish_transform(self.particles)
         
     def pose_callback(self, msg): 
@@ -124,29 +121,6 @@ class ParticleFilter(Node):
             msg = PoseWithCovarianceStamped Message, vars: pose, covariance
                 pose = Pose Message, vars: Point position, Quaternion orientation
         """
-        # # # Extract position
-        # x = msg.pose.pose.position.x
-        # y = msg.pose.pose.position.y
-
-        # # sample gauss
-        # newx = x + np.random.normal()
-        # # euler fr/ q
-        # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
-        # self.get_logger().info("in pose callback")
-        # self.get_logger().info(f"X: {x}")
-        # self.get_logger().info(f"y: {y}")
-        # self.get_logger().info(f"odom_quat is: {odom_quat}")
-        # th = 0# odom_quat[2]
-
-        
-        # od = [x, y, th]
-        # # updated_particles = self.motion_model.evaluate(self.particles, od)
-        # self.particles[:,0] = x
-        # self.particles[:,1]=y
-        
-        # return updated_particles
-        # # self.particles = updated_particles
-        # self.publish_transform(self.particles)
 
         # Extract position
         x = msg.pose.pose.position.x
@@ -156,8 +130,8 @@ class ParticleFilter(Node):
         # self.get_logger().info(f"odom_quat is: {odom_quat}")
         th = odom_quat[2]
 
-        newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
-        newy = y + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
+        newx = x + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1))
+        newy = y + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1))
         # newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
 
         # self.get_logger().info(np.array_str(newx))
@@ -171,9 +145,11 @@ class ParticleFilter(Node):
 
 
     def publish_transform(self, particles): 
+        particles = np.array(particles)
+        particles2 = np.array(particles)
         #average particle pose 
         sin_sum = np.sum(np.sin(particles[:,2]))
-        cos_sum = np.sum(np.cos(particles[:,2]))
+        cos_sum = np.sum(np.cos(particles2[:,2]))
         avg_angle = np.arctan2(sin_sum, cos_sum)
 
         avg_x = np.average(particles[:,0])
@@ -217,8 +193,13 @@ class ParticleFilter(Node):
         particles_msg.poses = poses
         self.particles_pub.publish(particles_msg)
 
+def main(args=None):
+    rclpy.init(args=args)
+    pf = ParticleFilter()
+    rclpy.spin(pf)
+    rclpy.shutdown()
 
-    # def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
+# def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
     #     """
     #     Convert a TransformStamped message to a 4x4 SE3 matrix 
     #     """
@@ -259,9 +240,27 @@ class ParticleFilter(Node):
     #     return obj
 
 
+    ## used to be in pose callback
+    # # # Extract position
+        # x = msg.pose.pose.position.x
+        # y = msg.pose.pose.position.y
 
-def main(args=None):
-    rclpy.init(args=args)
-    pf = ParticleFilter()
-    rclpy.spin(pf)
-    rclpy.shutdown()
+        # # sample gauss
+        # newx = x + np.random.normal()
+        # # euler fr/ q
+        # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
+        # self.get_logger().info("in pose callback")
+        # self.get_logger().info(f"X: {x}")
+        # self.get_logger().info(f"y: {y}")
+        # self.get_logger().info(f"odom_quat is: {odom_quat}")
+        # th = 0# odom_quat[2]
+
+        
+        # od = [x, y, th]
+        # # updated_particles = self.motion_model.evaluate(self.particles, od)
+        # self.particles[:,0] = x
+        # self.particles[:,1]=y
+        
+        # return updated_particles
+        # # self.particles = updated_particles
+        # self.publish_transform(self.particles)

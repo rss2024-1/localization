@@ -34,15 +34,16 @@ class MotionModel:
         ####################################
         # TODO
         dx, dy, dtheta = odometry
-        
+        particles = np.array(particles)
+        particles2 = np.array(particles)
         cos_thetas = np.cos(particles[:, 2])
-        sin_thetas = np.sin(particles[:, 2])
+        sin_thetas = np.sin(particles2[:, 2])
 
         dx_rotated = cos_thetas * dx - sin_thetas * dy
         dy_rotated = sin_thetas * dx + cos_thetas * dy
 
-        particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = .01, size=(len(particles),))
-        particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = .01, size=(len(particles),))
+        particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = .1, size=(len(particles),))
+        particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = .1, size=(len(particles),))
         particles[:, 2] += dtheta
 
         # Normalize angles to the range [-pi, pi]
