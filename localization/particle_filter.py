@@ -105,7 +105,7 @@ class ParticleFilter(Node):
 
 
     def odom_callback(self, odometry): 
-        dt = self.get_clock().now() - self.curr_time
+        dt = (self.get_clock().now() - self.curr_time).nanoseconds * 1e-9
         self.curr_time = self.get_clock().now()
 
         dx = odometry.twist.twist.linear.x * dt
@@ -124,9 +124,12 @@ class ParticleFilter(Node):
             msg = PoseWithCovarianceStamped Message, vars: pose, covariance
                 pose = Pose Message, vars: Point position, Quaternion orientation
         """
-        # # Extract position
+        # # # Extract position
         # x = msg.pose.pose.position.x
         # y = msg.pose.pose.position.y
+
+        # # sample gauss
+        # newx = x + np.random.normal()
         # # euler fr/ q
         # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
         # self.get_logger().info("in pose callback")
@@ -142,8 +145,29 @@ class ParticleFilter(Node):
         # self.particles[:,1]=y
         
         # return updated_particles
-        # self.particles = updated_particles
+        # # self.particles = updated_particles
+        # self.publish_transform(self.particles)
+
+        # Extract position
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        # euler fr/ q
+        odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
+        # self.get_logger().info(f"odom_quat is: {odom_quat}")
+        th = odom_quat[2]
+
+        newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
+        newy = y + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
+        # newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
+
+        # self.get_logger().info(np.array_str(newx))
+        # self.get_logger().info(np.array_str(newy))
+        # self.get_logger().info(np.array_str(newth))
+        self.particles = np.concatenate((newx, newy, np.full(shape=(len(self.particles),1), fill_value=th)), axis=1)
+
+        # self.get_logger().info("*******Initialized particles from pose******")
         self.publish_transform(self.particles)
+
 
 
     def publish_transform(self, particles): 
