@@ -123,29 +123,6 @@ class ParticleFilter(Node):
             msg = PoseWithCovarianceStamped Message, vars: pose, covariance
                 pose = Pose Message, vars: Point position, Quaternion orientation
         """
-        # # # Extract position
-        # x = msg.pose.pose.position.x
-        # y = msg.pose.pose.position.y
-
-        # # sample gauss
-        # newx = x + np.random.normal()
-        # # euler fr/ q
-        # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
-        # self.get_logger().info("in pose callback")
-        # self.get_logger().info(f"X: {x}")
-        # self.get_logger().info(f"y: {y}")
-        # self.get_logger().info(f"odom_quat is: {odom_quat}")
-        # th = 0# odom_quat[2]
-
-        
-        # od = [x, y, th]
-        # # updated_particles = self.motion_model.evaluate(self.particles, od)
-        # self.particles[:,0] = x
-        # self.particles[:,1]=y
-        
-        # return updated_particles
-        # # self.particles = updated_particles
-        # self.publish_transform(self.particles)
 
         # Extract position
         x = msg.pose.pose.position.x
@@ -182,15 +159,8 @@ class ParticleFilter(Node):
         avg_x = np.average(particles[:,0])
         avg_y = np.average(particles[:,1])
         
-        # particle_pose = [avg_x, avg_y, avg_angle]
-        
-        #publish transform between /map frame and frame for exp car base link
-        # tf_map_baselink = self.sensor_model.map @ particle_pose
-        # now = self.get_clock().now()
-        # out = self.se3_to_tf(tf_map_baselink, now, parent='map', child='base_link')
-        
         odom_pub_msg = Odometry() # creating message template in case ros is mad
-        odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
+        odom_pub_msg.pose.pose.position.x = avg_x 
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
@@ -216,49 +186,6 @@ class ParticleFilter(Node):
             poses.append(pose_msg)
         particles_msg.poses = poses
         self.particles_pub.publish(particles_msg)
-
-
-    # def tf_to_se3(self, transform: TransformStamped.transform) -> np.ndarray:
-    #     """
-    #     Convert a TransformStamped message to a 4x4 SE3 matrix 
-    #     """
-    #     q = transform.rotation
-    #     q = [q.x, q.y, q.z, q.w]
-    #     t = transform.translation
-    #     mat = tf.quaternion_matrix(q)
-    #     mat[0, 3] = t.x
-    #     mat[1, 3] = t.y
-    #     mat[2, 3] = t.z
-    #     return mat
-
-    # def se3_to_tf(self, mat: np.ndarray, time: Time, parent: str, child: str) -> TransformStamped:
-    #     """
-    #     Convert a 4x4 SE3 matrix to a TransformStamped message
-    #     """
-    #     obj = geometry_msgs.msg.TransformStamped()
-
-    #     # current time
-    #     obj.header.stamp = time.to_msg()
-
-    #     # frame names
-    #     obj.header.frame_id = parent
-    #     obj.child_frame_id = child
-
-    #     # translation component
-    #     obj.transform.translation.x = mat[0, 3]
-    #     obj.transform.translation.y = mat[1, 3]
-    #     obj.transform.translation.z = mat[2, 3]
-
-    #     # rotation (quaternion)
-    #     q = tf.quaternion_from_matrix(mat)
-    #     obj.transform.rotation.x = q[0]
-    #     obj.transform.rotation.y = q[1]
-    #     obj.transform.rotation.z = q[2]
-    #     obj.transform.rotation.w = q[3]
-
-    #     return obj
-
-
 
 def main(args=None):
     rclpy.init(args=args)
