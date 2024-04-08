@@ -72,8 +72,6 @@ class ParticleFilter(Node):
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
 
-        self.get_logger().info("=============+READY+=============")
-
         # Implement the MCL algorithm
         # using the sensor model and the motion model
         #
@@ -156,8 +154,8 @@ class ParticleFilter(Node):
         # self.get_logger().info(f"odom_quat is: {odom_quat}")
         th = odom_quat[2]
 
-        newx = x + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
-        newy = y + np.random.normal(loc=0.0, scale=0.001, size=(len(self.particles),1))
+        newx = x + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1))
+        newy = y + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1))
         # newth = np.angle(np.exp(1j * (th + np.random.default_rng().uniform(low=0.0, high=2*np.pi, size=len(self.particles)))))
 
         # self.get_logger().info(np.array_str(newx))
@@ -191,9 +189,6 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
-        self.get_logger().info(f"avg X: {avg_x}")
-        self.get_logger().info(f"avg y: {avg_y}")
-        self.get_logger().info(f"odom quat: {odom_quat}")
         odom_pub_msg.pose.pose.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 
