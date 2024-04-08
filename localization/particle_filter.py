@@ -167,9 +167,9 @@ class ParticleFilter(Node):
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
-        self.get_logger().info(f"avg X: {avg_x}")
-        self.get_logger().info(f"avg y: {avg_y}")
-        self.get_logger().info(f"odom quat: {odom_quat}")
+        # self.get_logger().info(f"avg X: {avg_x}")
+        # self.get_logger().info(f"avg y: {avg_y}")
+        # self.get_logger().info(f"odom quat: {odom_quat}")
         odom_pub_msg.pose.pose.orientation = Quaternion(x=odom_quat[0], y=odom_quat[1], z=odom_quat[2], w=odom_quat[3])
         #header
 

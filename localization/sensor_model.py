@@ -48,10 +48,10 @@ class SensorModel:
         self.table_width = 201
         ####################################
 
-        node.get_logger().info("%s" % self.map_topic)
-        node.get_logger().info("%s" % self.num_beams_per_particle)
-        node.get_logger().info("%s" % self.scan_theta_discretization)
-        node.get_logger().info("%s" % self.scan_field_of_view)
+        # node.get_logger().info("%s" % self.map_topic)
+        # node.get_logger().info("%s" % self.num_beams_per_particle)
+        # node.get_logger().info("%s" % self.scan_theta_discretization)
+        # node.get_logger().info("%s" % self.scan_field_of_view)
 
         # Precompute the sensor model table
         self.sensor_model_table = np.empty((self.table_width, self.table_width))
@@ -156,7 +156,7 @@ class SensorModel:
         # You will probably want to use this function
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
-
+        particles = np.array(particles)
         scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
         
         # self.printNode.get_logger().info("%d" %np.shape(particles)[0])
