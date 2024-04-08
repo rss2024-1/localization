@@ -122,29 +122,6 @@ class ParticleFilter(Node):
             msg = PoseWithCovarianceStamped Message, vars: pose, covariance
                 pose = Pose Message, vars: Point position, Quaternion orientation
         """
-        # # # Extract position
-        # x = msg.pose.pose.position.x
-        # y = msg.pose.pose.position.y
-
-        # # sample gauss
-        # newx = x + np.random.normal()
-        # # euler fr/ q
-        # odom_quat = tf.euler_from_quaternion((msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w))
-        # self.get_logger().info("in pose callback")
-        # self.get_logger().info(f"X: {x}")
-        # self.get_logger().info(f"y: {y}")
-        # self.get_logger().info(f"odom_quat is: {odom_quat}")
-        # th = 0# odom_quat[2]
-
-        
-        # od = [x, y, th]
-        # # updated_particles = self.motion_model.evaluate(self.particles, od)
-        # self.particles[:,0] = x
-        # self.particles[:,1]=y
-        
-        # return updated_particles
-        # # self.particles = updated_particles
-        # self.publish_transform(self.particles)
 
         # Extract position
         x = msg.pose.pose.position.x
@@ -161,7 +138,7 @@ class ParticleFilter(Node):
         # self.get_logger().info(np.array_str(newx))
         # self.get_logger().info(np.array_str(newy))
         # self.get_logger().info(np.array_str(newth))
-        self.particles = np.concatenate((newx, newy, newth, np.full(shape=(len(self.particles),1), fill_value=th)), axis=1)
+        self.particles = np.concatenate((newx, newy, newth, np.full(shape=(len(self.particles),1), fill_value=[])), axis=1)
 
         # self.get_logger().info("*******Initialized particles from pose******")
         self.publish_transform(self.particles)
@@ -178,7 +155,7 @@ class ParticleFilter(Node):
         avg_y = np.average(particles[:,1])
         
         odom_pub_msg = Odometry() # creating message template in case ros is mad
-        odom_pub_msg.pose.pose.position.x = avg_x #out # specifically ONLY publish to the pose variable
+        odom_pub_msg.pose.pose.position.x = avg_x 
         odom_pub_msg.pose.pose.position.y = avg_y
         odom_pub_msg.pose.pose.position.z = 0.0
         odom_quat = tf.quaternion_from_euler(0, 0, avg_angle)
