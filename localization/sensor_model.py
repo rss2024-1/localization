@@ -160,8 +160,8 @@ class SensorModel:
         scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
         
         # self.printNode.get_logger().info("%d" %np.shape(particles)[0])
-        for i in range(len(particles)):
-            self.printNode.get_logger().info("particle %d: (%.2f,%.2f,%.1f)" %(i,particles[i][0], particles[i][1], particles[i][2]))
+        # for i in range(len(particles)):
+        #     self.printNode.get_logger().info("particle %d: (%.2f,%.2f,%.1f)" %(i,particles[i][0], particles[i][1], particles[i][2]))
         
         try:
             self.num_beams_per_particle == np.shape(scans)[1]
