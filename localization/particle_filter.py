@@ -258,21 +258,10 @@ class ParticleFilter(Node):
                             msg_frame_quat.z, msg_frame_quat.w]
             msg_frame_pos = [msg_frame_pos.x, msg_frame_pos.y, msg_frame_pos.z]
             # (roll, pitch, yaw) = euler_from_quaternion(msg_frame_quat)
-            # cone_relative_baselink_x =\
-            #     msg_frame_pos[0]+np.cos(yaw)*self.message_x-np.sin(yaw)*self.message_y 
-            # cone_relative_baselink_y =\
-            #     msg_frame_pos[1]+np.cos(yaw)*self.message_y+np.sin(yaw)*self.message_x
-            
-            # # Publish relative cone location
-            # relative_cone = ConeLocation()
-            # relative_cone.x_pos = cone_relative_baselink_x
-            # relative_cone.y_pos = cone_relative_baselink_y
-            # self.cone_pub.publish(relative_cone)
 
             error_msg = ParkingError()
-            x, y = self.avg_x-x, self.avg_y-y
-            error_msg.x_error = x
-            error_msg.y_error = y
+            error_msg.x_error = self.avg_x - x
+            error_msg.y_error = self.avg_y - y
             error_msg.distance_error = ((self.avg_x-x)**2 + (self.avg_y-y)**2)**0.5
 
             self.error_pub.publish(error_msg)
