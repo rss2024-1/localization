@@ -94,34 +94,29 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-
         
         for z_i in range(self.table_width): # z_i is the rows
             for d_i in range(self.table_width): # d is the columns
                 self.p_hit_table[z_i][d_i] = self.p_hit(z_i, d_i)
+        # self.p_hit_table /= np.linalg.norm(self.p_hit_table, axis=0) # normalize the columns of the hit table
         self.p_hit_table /= np.sum(self.p_hit_table, axis=0)
 
         for z_i in range(self.table_width):
             for d_i in range(self.table_width):
                 self.sensor_model_table[z_i][d_i] = self.add_probablities(z_i, d_i, self.p_hit_table[z_i][d_i])
+
+        # self.sensor_model_table /= np.linalg.norm(self.sensor_model_table, axis=0) # normalize the columns
         self.sensor_model_table /= np.sum(self.sensor_model_table, axis=0)
 
-
     def add_probablities(self, z, d, p_hit_val):
-        return self.alpha_hit*p_hit_val+self.alpha_short*self.p_short(z, d)+self.alpha_max*self.p_max(z)+self.alpha_rand*self.p_rand(z)
+        p_short = 2/d*(1-z/d) if (0<=z<=d and d!=0) else 0
+        p_max = 1/self.epsilon if z == self.z_max else 0
+        p_rand = 1/self.z_max if 0 <= z <= self.z_max else 0
+        return self.alpha_hit*p_hit_val+self.alpha_short*p_short+self.alpha_max*p_max+self.alpha_rand*p_rand
 
     def p_hit(self, z, d):
-        return self.n*1/np.sqrt(2*np.pi*self.sigma_hit**2)*np.exp(-(z-d)**2/(2*self.sigma_hit**2)) if 0 <= z <= self.z_max else 0
-
-    def p_short(self, z, d):
-        return 2/d*(1-z/d) if (0<=z<=d and d!=0) else 0
-
-    def p_max(self, z):
-        return 1/self.epsilon if z == self.z_max else 0
-
-    def p_rand(self, z):
-        return 1/self.z_max if 0 <= z <= self.z_max else 0        
-
+        return self.n*1/np.sqrt(2*np.pi*self.sigma_hit**2)*np.exp(-(z-d)**2/(2*self.sigma_hit**2)) if 0 <= z <= self.z_max else 0        
+    
     def evaluate(self, particles, observation):
         """
         Evaluate how likely each particle is given
@@ -142,50 +137,21 @@ class SensorModel:
                the probability of each particle existing
                given the observation and the map.
         """
-        
         if not self.map_set:
             return
-
-        ####################################
-        # TODO
-        # Evaluate the sensor model here!
-        #
-        # You will probably want to use this function
-        # to perform ray tracing from all the particles.
-        # This produces a matrix of size N x num_beams_per_particle 
-
-        scans = self.scan_sim.scan(particles) # an nxm array where m is num beams per particle supposedly
+       
+        positions = self.scan_sim.scan(particles)
+        positions = np.array(positions)
+        scans = positions / (self.resolution * self.lidar_scale_to_map_scale)
+        scans = np.clip(scans, 0, self.z_max).astype(int)
         
-        # self.printNode.get_logger().info("%d" %np.shape(particles)[0])
-        for i in range(len(particles)):
-            self.printNode.get_logger().info("particle %d: (%.2f,%.2f,%.1f)" %(i,particles[i][0], particles[i][1], particles[i][2]))
-        
-        try:
-            self.num_beams_per_particle == np.shape(scans)[1]
-        except AssertionError:
-            print("num beams per particle doesn't match after the ray casting")
+        observation = np.array(observation)
+        observation /= (self.resolution * self.lidar_scale_to_map_scale)
+        observation = np.clip(observation, 0, self.z_max).astype(int)
 
-        # convert from meters to pixels and make sure they're within 
-        m_to_pix_scale = 1 / (self.resolution * self.lidar_scale_to_map_scale)
-        scans *= m_to_pix_scale
-        observation = observation * m_to_pix_scale
+        probabilities = np.prod(self.sensor_model_table[observation, scans], axis=1)  
 
-        scans = np.clip(scans, 0, self.z_max)
-        observation = np.clip(observation, 0, self.z_max)
-        # self.printNode.get_logger().info("%f" % np.shape(scans)[0])
-        
-        probabilities = []
-        for i, scan in enumerate(scans):
-            probability = 1.0
-            d = scan / m_to_pix_scale # get orig scan back??
-            z_k = observation / m_to_pix_scale # orig obs back??
-            for d_i, z_ki in zip(d, z_k):
-                probability *= self.sensor_model_table[int(z_ki)][int(d_i)]
-            probabilities.append(probability)
-        probabilities = np.power(probabilities, 1/3) # ok
         return probabilities
-
-        ####################################
 
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
