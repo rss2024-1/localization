@@ -22,7 +22,7 @@ class ParticleFilter(Node):
 
         self.declare_parameter('particle_filter_frame', "default")
         self.particle_filter_frame = self.get_parameter('particle_filter_frame').get_parameter_value().string_value
-        self.particles = np.zeros((100,3))
+        self.particles = np.zeros((200,3))
 
         #  *Important Note #1:* It is critical for your particle
         #     filter to obtain the following topic names from the
@@ -89,12 +89,13 @@ class ParticleFilter(Node):
         self.curr_time = self.get_clock().now()
 
     def laser_callback(self, scan): 
+        return
         probabilities = self.sensor_model.evaluate(self.particles, scan.intensities)
         try: 
             probabilities /= sum(probabilities)
         except: 
-            probabilities = np.empty(100)
-            probabilities.fill(1/100)
+            probabilities = np.empty(200)
+            probabilities.fill(1/200)
         self.get_logger().info(f"probs: {probabilities}")
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
