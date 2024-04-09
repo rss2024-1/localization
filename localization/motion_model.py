@@ -43,7 +43,7 @@ class MotionModel:
 
         particles[:, 0] += dx_rotated + np.random.normal(loc=0.0, scale = self.noise_level, size=(len(particles),))
         particles[:, 1] += dy_rotated + np.random.normal(loc=0.0, scale = self.noise_level, size=(len(particles),))
-        particles[:, 2] += dtheta + np.random.normal(loc=0.0, scale=0.01, size=(len(particles),))
+        particles[:, 2] += dtheta + np.random.normal(loc=0.0, scale=0.1, size=(len(particles),))
 
         # Normalize angles to the range [-pi, pi]
         particles[:, 2] = (particles[:, 2] + np.pi) % (2 * np.pi) - np.pi        

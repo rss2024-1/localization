@@ -163,7 +163,7 @@ class ParticleFilter(Node):
 
         newx = np.array(x + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
         newy = np.array(y + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
-        newth = np.array(th + np.random.normal(loc=0.0, scale=0.01, size=(len(self.particles),1)))
+        newth = np.array(th + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1)))
         # newx = np.full(shape=(len(self.particles),1), fill_value=x) 
         # newy = np.full(shape=(len(self.particles),1), fill_value=y)  
         # newth = np.full(shape=(len(self.particles),1), fill_value=th)  
