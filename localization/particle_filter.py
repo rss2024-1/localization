@@ -99,7 +99,7 @@ class ParticleFilter(Node):
         self.avg_y = 0
         self.avg_angle = 0
 
-        self.noise_level = 0.1
+        self.noise_level = 0.3 #xy
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer, self)
 
@@ -161,8 +161,8 @@ class ParticleFilter(Node):
         th = odom_euler[2] # maybe negative of this?? idk??
 
 
-        newx = np.array(x + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1)))
-        newy = np.array(y + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1)))
+        newx = np.array(x + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
+        newy = np.array(y + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
         newth = np.array(th + np.random.normal(loc=0.0, scale=0.01, size=(len(self.particles),1)))
         # newx = np.full(shape=(len(self.particles),1), fill_value=x) 
         # newy = np.full(shape=(len(self.particles),1), fill_value=y)  
