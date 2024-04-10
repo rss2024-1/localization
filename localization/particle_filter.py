@@ -99,7 +99,7 @@ class ParticleFilter(Node):
         self.avg_y = 0
         self.avg_angle = 0
 
-        self.noise_level = 0.3 #xy
+        self.noise_level = 0.1 #xy
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer, self)
 
@@ -109,7 +109,9 @@ class ParticleFilter(Node):
     def laser_callback(self, scan): 
         # return
         self.mutex.acquire(blocking=True)
-        probabilities = self.sensor_model.evaluate(self.particles, scan.ranges)
+        downsampled_ranges = np.linspace(0, len(scan.ranges) - 1, num=200, dtype=int)
+        probabilities = self.sensor_model.evaluate(self.particles, np.array(scan.ranges)[downsampled_ranges][:, np.newaxis])
+
         try: 
             probabilities /= sum(probabilities)
         except: 
