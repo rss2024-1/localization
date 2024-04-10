@@ -115,9 +115,10 @@ class ParticleFilter(Node):
         try: 
             probabilities /= sum(probabilities)
         except: 
-            probabilities = np.empty(200)
-            probabilities.fill(1/200)
-        self.get_logger().info(f"probs: {probabilities}")
+            # probabilities = np.empty(200)
+            # probabilities.fill(1/200)
+            probabilities.full((200), 1/200)
+        # self.get_logger().info(f"probs: {probabilities}")
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
@@ -241,25 +242,23 @@ class ParticleFilter(Node):
             tf_map_base_link: TransformStamped = self.tfBuffer.lookup_transform('map', 'base_link', rclpy.time.Time())
             # mat = self.tf_to_se3(tf_map_base_link)
 
-            odom_quat = tf.quaternion_from_euler(0, 0, self.avg_angle)
-            tf_est_pose = [self.avg_x, self.avg_y, 0]
+            # odom_quat = tf.quaternion_from_euler(0, 0, self.avg_angle)
+            # tf_est_pose = [self.avg_x, self.avg_y, 0]
             # err = tf_map_base_link.inverseTimes(tf_est_pose)
 
-            # self.error_pub.publish(tf_map_base_link)
-
-            q = tf_map_base_link.transform.rotation
-            q = [q.x, q.y, q.z, q.w]
+            # q = tf_map_base_link.transform.rotation
+            # q = [q.x, q.y, q.z, q.w]
             t = tf_map_base_link.transform.translation
             x, y, z = [t.x, t.y, t.z]
 
-            t = tf_map_base_link
+            # t = tf_map_base_link
 
-            msg_frame_pos = t.transform.translation
-            msg_frame_quat = t.transform.rotation
-            msg_frame_quat = [msg_frame_quat.x, msg_frame_quat.y,
-                            msg_frame_quat.z, msg_frame_quat.w]
-            msg_frame_pos = [msg_frame_pos.x, msg_frame_pos.y, msg_frame_pos.z]
-            # (roll, pitch, yaw) = euler_from_quaternion(msg_frame_quat)
+            # msg_frame_pos = t.transform.translation
+            # msg_frame_quat = t.transform.rotation
+            # msg_frame_quat = [msg_frame_quat.x, msg_frame_quat.y,
+            #                 msg_frame_quat.z, msg_frame_quat.w]
+            # msg_frame_pos = [msg_frame_pos.x, msg_frame_pos.y, msg_frame_pos.z]
+            # # (roll, pitch, yaw) = euler_from_quaternion(msg_frame_quat)
 
             error_msg = ParkingError()
             error_msg.x_error = self.avg_x - x
