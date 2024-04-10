@@ -100,18 +100,17 @@ class ParticleFilter(Node):
         self.avg_angle = 0
 
         self.noise_level = 0.1 #xy
+        self.angle_noise = 0.05
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer, self)
 
-        self.error_pub = self.create_publisher(ParkingError, "/parking_error", 10)
+        self.error_pub = self.create_publisher(ParkingError, "/odom_error", 10)
 
         
     def laser_callback(self, scan): 
         # return
         self.mutex.acquire(blocking=True)
-        downsampled_ranges = np.linspace(0, len(scan.ranges) - 1, num=200, dtype=int)
-        probabilities = self.sensor_model.evaluate(self.particles, np.array(scan.ranges)[downsampled_ranges][:, np.newaxis])
-
+        probabilities = self.sensor_model.evaluate(self.particles, scan.ranges)
         try: 
             probabilities /= sum(probabilities)
         except: 
@@ -165,7 +164,7 @@ class ParticleFilter(Node):
 
         newx = np.array(x + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
         newy = np.array(y + np.random.normal(loc=0.0, scale=self.noise_level, size=(len(self.particles),1)))
-        newth = np.array(th + np.random.normal(loc=0.0, scale=0.1, size=(len(self.particles),1)))
+        newth = np.array(th + np.random.normal(loc=0.0, scale=self.angle_noise, size=(len(self.particles),1)))
         # newx = np.full(shape=(len(self.particles),1), fill_value=x) 
         # newy = np.full(shape=(len(self.particles),1), fill_value=y)  
         # newth = np.full(shape=(len(self.particles),1), fill_value=th)  
@@ -280,3 +279,4 @@ def main(args=None):
     pf = ParticleFilter()
     rclpy.spin(pf)
     rclpy.shutdown()
+
