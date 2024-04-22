@@ -33,6 +33,8 @@ class MotionModel:
 
         ####################################
         # TODO
+        print(odometry)
+        # self.get_logger().info(f"probs: {odometry}")
         dx, dy, dtheta = odometry
         
         cos_thetas = np.cos(particles[:, 2])
