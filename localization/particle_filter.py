@@ -114,10 +114,10 @@ class ParticleFilter(Node):
         try: 
             probabilities /= sum(probabilities)
         except: 
-            # probabilities = np.empty(200)
-            # probabilities.fill(1/200)
-            probabilities.full((200), 1/200)
-        self.get_logger().info(f"probs: {probabilities}")
+            probabilities = np.empty(200)
+            probabilities.fill(1/200)
+            # probabilities.full((200), 1/200)
+        # self.get_logger().info(f"probs: {probabilities}")
         resampled_indices = np.random.choice(self.particles.shape[0], size=self.particles.shape[0], replace=True, p=probabilities)
         resampled_particles = self.particles[resampled_indices]
         self.particles = resampled_particles
